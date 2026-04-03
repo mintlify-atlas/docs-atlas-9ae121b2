@@ -1,0 +1,84 @@
+---
+title: "env.Exists / env.MustExist"
+description: "Check for environment variable existence"
+---
+
+## Overview
+
+These two functions handle the most basic question about an environment variable: is it set at all?
+
+---
+
+## `env.Exists`
+
+```go
+func Exists(env string) (ok bool)
+```
+
+Wraps `os.LookupEnv`. Returns `true` if the variable is present in the environment, even if its value is an empty string. Returns `false` only when the variable is completely absent.
+
+When `ShowVerbose` is `true` and the variable is not found, the absence is logged via `OutLogger`.
+
+### Parameters
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to check.
+</ParamField>
+
+### Return value
+
+`true` if the variable is set (including when the value is empty); `false` if it is not set.
+
+---
+
+## `env.MustExist`
+
+```go
+func MustExist(env string)
+```
+
+Asserts that the named environment variable is set. If it is not set, the function either panics or calls `os.Exit(1)`, depending on the `AllowPanic` global variable.
+
+### Parameters
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable that must be present.
+</ParamField>
+
+### Behavior on missing variable
+
+| `AllowPanic` value | Behavior |
+| --- | --- |
+| `false` (default) | Logs the error and calls `os.Exit(1)` |
+| `true` | Calls `panic()` with a descriptive message |
+
+<Note>
+`AllowPanic` can be set programmatically (`env.AllowPanic = true`) or via the `AM_GO_ENV_ALWAYS_ALLOW_PANIC` environment variable. When set via the environment variable, the package reads it during initialization.
+</Note>
+
+---
+
+## Examples
+
+```go
+// Check before use
+if env.Exists("DATABASE_URL") {
+    db := env.String("DATABASE_URL", "")
+    // connect
+}
+
+// Require at startup
+func init() {
+    env.MustExist("DATABASE_URL")
+    env.MustExist("SECRET_KEY")
+    env.MustExist("API_TOKEN")
+}
+
+// Allow panic mode
+env.AllowPanic = true
+env.MustExist("REQUIRED_VAR") // will panic instead of os.Exit(1)
+```
+
+<Tip>
+Call `MustExist` inside `init()` functions to catch missing configuration at process startup, before any application logic runs. This produces a clear error message and a non-zero exit code immediately.
+</Tip>

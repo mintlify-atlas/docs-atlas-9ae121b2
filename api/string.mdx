@@ -1,0 +1,127 @@
+---
+title: "env.String"
+description: "Read a string value from an environment variable"
+---
+
+## `String`
+
+```go
+func String(env string, fallback string) string
+```
+
+Returns the value of an environment variable as a string. If the variable is not set, `fallback` is returned unchanged.
+
+### Parameters
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+
+<ParamField path="fallback" type="string" required>
+  The value returned when the variable is not set.
+</ParamField>
+
+### Return value
+
+Returns a `string`. The raw value of the environment variable, or `fallback` if the variable is unset.
+
+### Examples
+
+```go
+hostname := env.String("HOSTNAME", "localhost")
+apiURL := env.String("API_URL", "https://api.example.com")
+```
+
+<Tip>
+  Use `env.ZeroString` (an empty string `""`) as the fallback when you want to detect an explicitly unset variable without hard-coding an empty string literal.
+</Tip>
+
+---
+
+## `Set`
+
+```go
+func Set(env string, value string) error
+```
+
+Sets an environment variable for the current process. Wraps `os.Setenv` and returns any error it produces.
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to set.
+</ParamField>
+
+<ParamField path="value" type="string" required>
+  The value to assign to the variable.
+</ParamField>
+
+```go
+err := env.Set("BACKUPS_DIR", "/tmp/backups")
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+---
+
+## `Unset`
+
+```go
+func Unset(env string) error
+```
+
+Removes an environment variable from the current process. Wraps `os.Unsetenv` and returns any error it produces.
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to remove.
+</ParamField>
+
+```go
+err := env.Unset("OLD_VAR")
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+---
+
+## `WasSet`
+
+```go
+func WasSet(env string, value string) bool
+```
+
+Sets an environment variable and then immediately verifies that it was written correctly. Returns `false` if `os.Setenv` fails or if a subsequent `os.LookupEnv` does not return the expected value.
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to set.
+</ParamField>
+
+<ParamField path="value" type="string" required>
+  The value to assign and verify.
+</ParamField>
+
+```go
+if !env.WasSet("BACKUPS_DIR", filepath.Join(env.User().HomeDir, "backups")) {
+    // failed to set BACKUPS_DIR
+}
+```
+
+---
+
+## `WasUnset`
+
+```go
+func WasUnset(env string) bool
+```
+
+Removes an environment variable and returns `true` if the removal succeeded. Returns `false` if `os.Unsetenv` reports an error.
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to remove.
+</ParamField>
+
+```go
+if !env.WasUnset("BACKUPS_DIR") {
+    // failed to unset BACKUPS_DIR
+}
+```

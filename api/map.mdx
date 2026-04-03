@@ -1,0 +1,117 @@
+---
+title: "env.Map"
+description: "Parse a delimited string into a map[string]string"
+---
+
+## `Map`
+
+```go
+func Map(env string, fallback map[string]string) map[string]string
+```
+
+Reads an environment variable and parses it into a `map[string]string`. The value is first split into pairs using `MapSeparator` (default `","`), then each pair is split into a key and value using `MapItemSeparator` (default `"="`) with `strings.SplitN(..., MapSplitN)` (default `2`). Whitespace is trimmed from both keys and values, and pairs without exactly two components are silently skipped.
+
+Returns `fallback` when the variable is unset.
+
+### Parameters
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+
+<ParamField path="fallback" type="map[string]string" required>
+  The map returned when the variable is unset. Use `env.ZeroMap` when you want a nil map without allocating a literal.
+</ParamField>
+
+### Return value
+
+Returns a `map[string]string`. Only pairs that produce a non-empty key are included.
+
+### Examples
+
+```go
+config := env.Map("CONFIG", env.ZeroMap)
+// CONFIG="host=localhost,port=5432"
+// → map[string]string{"host": "localhost", "port": "5432"}
+```
+
+### Custom separators
+
+All three separator variables are package-level and can be changed before calling `Map`:
+
+```go
+env.MapSeparator = "|"
+env.MapItemSeparator = "~"
+data := env.Map("DATA", env.ZeroMap)
+// DATA="key1~value1|key2~value2"
+// → map[string]string{"key1": "value1", "key2": "value2"}
+```
+
+The separators can also be set via environment variables when magic initialisation is active:
+
+| Variable | Default | Environment override |
+|----------|---------|----------------------|
+| `MapSeparator` | `","` | `AM_GO_ENV_MAP_SEPARATOR` |
+| `MapItemSeparator` | `"="` | `AM_GO_ENV_MAP_ITEM_SEPARATOR` |
+| `MapSplitN` | `2` | `AM_GO_ENV_MAP_SPLIT_N` |
+
+<Tip>
+  If a value itself may contain the item separator character, increase `MapSplitN` so the split stops after the first delimiter. With `MapSplitN = 2` the value `"key=a=b"` parses as `{"key": "a=b"}`.
+</Tip>
+
+---
+
+## `MapHasKey`
+
+```go
+func MapHasKey(env string, fallback map[string]string, key string) bool
+```
+
+Parses the map from the environment variable and reports whether `key` is present.
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+
+<ParamField path="fallback" type="map[string]string" required>
+  Passed to `Map` if the variable is unset.
+</ParamField>
+
+<ParamField path="key" type="string" required>
+  The key to look up in the parsed map.
+</ParamField>
+
+```go
+if !env.MapHasKey("CONFIG", env.ZeroMap, "domain") {
+    panic("missing required key 'domain' in CONFIG")
+}
+```
+
+---
+
+## `MapHasKeys`
+
+```go
+func MapHasKeys(env string, fallback map[string]string, keys ...string) bool
+```
+
+Parses the map and returns `true` only when **all** of the specified keys are present.
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+
+<ParamField path="fallback" type="map[string]string" required>
+  Passed to `Map` if the variable is unset.
+</ParamField>
+
+<ParamField path="keys" type="...string" required>
+  One or more keys that must all be present in the parsed map.
+</ParamField>
+
+```go
+required := []string{"env", "author", "customer"}
+if env.MapHasKeys("TAGS", env.ZeroMap, required...) {
+    fmt.Println("TAGS contains all required keys.")
+}
+```

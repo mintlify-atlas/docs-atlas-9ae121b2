@@ -1,0 +1,301 @@
+---
+title: "Type functions"
+description: "Read environment variables as typed Go values — bool, int, float, string, time.Duration, []string, and map[string]string — with safe fallbacks."
+keywords: ["env", "Bool", "String", "Int", "Float", "Duration", "List", "Map", "type-safe"]
+---
+
+Every type function accepts an environment variable name and a fallback value. When the variable is not set or cannot be parsed into the target type, the fallback is returned — no panics, no zero-value surprises.
+
+## Type conversion
+
+<AccordionGroup>
+  <Accordion title="Bool" defaultOpen>
+    ```go
+    func Bool(env string, fallback bool) bool
+    ```
+
+    Parses a boolean environment variable. Accepted truthy values: `"true"`, `"t"`, `"1"`. Accepted falsy values: `"false"`, `"f"`, `"0"`. Any other value returns the fallback.
+
+    ```go
+    // export USE_JSON=true
+    useJSON := env.Bool("USE_JSON", false)
+    // useJSON == true
+
+    // Variable not set → fallback returned
+    verbose := env.Bool("VERBOSE", false)
+    // verbose == false
+    ```
+
+    `IsTrue` and `IsFalse` are convenience wrappers around `Bool` — see [Conditionals and validation](/library/conditionals).
+  </Accordion>
+
+  <Accordion title="String">
+    ```go
+    func String(env string, fallback string) string
+    ```
+
+    Returns the raw string value of an environment variable. No parsing is performed — the value is returned as-is.
+
+    ```go
+    // export HOSTNAME=db.internal
+    hostname := env.String("HOSTNAME", "localhost")
+    // hostname == "db.internal"
+
+    // Variable not set → fallback returned
+    region := env.String("AWS_REGION", "us-east-1")
+    ```
+  </Accordion>
+
+  <Accordion title="Int">
+    ```go
+    func Int(env string, fallback int) int
+    ```
+
+    Parses the environment variable as a base-10 integer using `strconv.Atoi`. Returns the fallback if the variable is unset or the value cannot be converted.
+
+    ```go
+    // export PORT=5432
+    port := env.Int("PORT", 3306)
+    // port == 5432
+
+    // Validate the parsed value with IntInRange:
+    if !env.IntInRange("PORT", 8080, 1024, 49151) {
+        log.Fatal("PORT must be in the user port range (1024–49151)")
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Int64">
+    ```go
+    func Int64(env string, fallback int64) int64
+    ```
+
+    Parses the environment variable as a 64-bit integer using `strconv.ParseInt`. The base and bit size are controlled by the package variables `Int64Base` (default `10`) and `Int64BitSize` (default `64`).
+
+    ```go
+    // export NANOSECONDS=1000000000
+    ns := env.Int64("NANOSECONDS", int64(1_000_000_000))
+    // ns == 1000000000
+
+    // Use base-8 parsing for octal file permissions:
+    env.Int64Base = 8
+    perms := env.Int64("FILE_PERMISSIONS", 0644)
+    ```
+  </Accordion>
+
+  <Accordion title="Float32">
+    ```go
+    func Float32(env string, fallback float32) float32
+    ```
+
+    Parses the environment variable as a 32-bit float using `strconv.ParseFloat`. Bit size is controlled by `Float32BitSize` (default `32`).
+
+    ```go
+    // export RATIO=0.75
+    ratio := env.Float32("RATIO", float32(1.0))
+    // ratio == 0.75
+
+    pi := env.Float32("PI", float32(3.14))
+    ```
+  </Accordion>
+
+  <Accordion title="Float64">
+    ```go
+    func Float64(env string, fallback float64) float64
+    ```
+
+    Parses the environment variable as a 64-bit float using `strconv.ParseFloat`. Bit size is controlled by `Float64BitSize` (default `64`).
+
+    ```go
+    // export THRESHOLD=0.9999
+    threshold := env.Float64("THRESHOLD", 0.95)
+    // threshold == 0.9999
+
+    pi := env.Float64("PI", 3.14159265358979)
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Duration
+
+<AccordionGroup>
+  <Accordion title="Duration" defaultOpen>
+    ```go
+    func Duration(env string, fallback time.Duration) time.Duration
+    ```
+
+    Parses a `time.Duration` from an environment variable. The parser tries two strategies in order:
+
+    1. **Duration string** — `"300ms"`, `"1.5h"`, `"2m30s"` (anything accepted by `time.ParseDuration`)
+    2. **Integer nanoseconds** — a raw integer is interpreted as nanoseconds, parsed with `strconv.ParseInt` using `DurationBase` and `DurationBitSize`
+
+    If both strategies fail, the fallback is returned.
+
+    ```go
+    // export TIMEOUT=1m30s
+    timeout := env.Duration("TIMEOUT", 5*time.Second)
+    // timeout == 90 * time.Second
+
+    // export TIMEOUT=5000000000  (5 seconds in nanoseconds)
+    timeout := env.Duration("TIMEOUT", 5*time.Second)
+    // timeout == 5 * time.Second
+    ```
+  </Accordion>
+
+  <Accordion title="UnitDuration">
+    ```go
+    func UnitDuration(env string, fallback, unit time.Duration) time.Duration
+    ```
+
+    Parses the environment variable as a number and multiplies it by `unit`. This lets you express "10 seconds" as `TIMEOUT=10` rather than `TIMEOUT=10s`.
+
+    <Warning>
+      Both the parsed environment variable value **and** the fallback are multiplied by `unit`. If your fallback is `3` and unit is `time.Second`, the effective default is `3 * time.Second = 3s`.
+    </Warning>
+
+    <Warning>
+      If the value is a full duration string (e.g. `"1h30m"`), `time.ParseDuration` is used first and the result is **still multiplied by `unit`**. Use `Duration` instead if you want duration strings to be used as-is without unit multiplication.
+    </Warning>
+
+    ```go
+    // export TIMEOUT=10
+    // 10 * time.Second = 10s
+    timeout := env.UnitDuration("TIMEOUT", 5, time.Second)
+    // timeout == 10 * time.Second
+
+    // Variable not set → fallback * unit
+    // 5 * time.Second = 5s
+    unsetTimeout := env.UnitDuration("UNSET_TIMEOUT", 5, time.Second)
+    // unsetTimeout == 5 * time.Second
+
+    // export POLL_INTERVAL=500
+    // 500 * time.Millisecond = 500ms
+    pollInterval := env.UnitDuration("POLL_INTERVAL", 250, time.Millisecond)
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Collections
+
+<AccordionGroup>
+  <Accordion title="List" defaultOpen>
+    ```go
+    func List(env string, fallback []string) []string
+    ```
+
+    Splits the environment variable's value on `ListSeparator` (default `","`) and returns a `[]string`. Empty items produced by the split are removed. Whitespace around each item is trimmed.
+
+    ```go
+    // export TAGS=go,docker,linux
+    tags := env.List("TAGS", []string{})
+    // tags == []string{"go", "docker", "linux"}
+
+    // Variable not set → fallback returned
+    hosts := env.List("REPLICA_HOSTS", env.ZeroList)
+    ```
+
+    To use a different separator, set `env.ListSeparator` before calling `List`:
+
+    ```go
+    env.Set("FEATURES", "auth|billing|search")
+    env.ListSeparator = "|"
+    features := env.List("FEATURES", env.ZeroList)
+    // features == []string{"auth", "billing", "search"}
+    ```
+  </Accordion>
+
+  <Accordion title="Map">
+    ```go
+    func Map(env string, fallback map[string]string) map[string]string
+    ```
+
+    Parses a `map[string]string` from an environment variable formatted as `"key1=val1,key2=val2"`. The pair separator is controlled by `MapSeparator` (default `","`) and the key/value separator by `MapItemSeparator` (default `"="`). `MapSplitN` (default `2`) controls how many splits are performed per item.
+
+    Keys and values are trimmed of whitespace. Pairs without a separator are silently skipped.
+
+    ```go
+    // export CONFIG=host=db.internal,port=5432,ssl=true
+    config := env.Map("CONFIG", env.ZeroMap)
+    // config == map[string]string{
+    //     "host": "db.internal",
+    //     "port": "5432",
+    //     "ssl":  "true",
+    // }
+
+    // Variable not set → fallback returned
+    labels := env.Map("K8S_LABELS", env.ZeroMap)
+    ```
+
+    Custom separators example — pipe-delimited pairs with tilde key/value separator:
+
+    ```go
+    env.Set("TEST_MAP", "key1~value1|key2~value2")
+    env.MapSeparator     = "|"
+    env.MapItemSeparator = "~"
+    env.MapSplitN        = 2 // default
+
+    properties := env.Map("TEST_MAP", env.ZeroMap)
+    // properties == map[string]string{"key1": "value1", "key2": "value2"}
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Zero values
+
+The package exports named zero values for every type. Use them as the fallback argument to signal "empty by default" clearly:
+
+| Variable | Type | Value |
+|---|---|---|
+| `env.ZeroInt` | `int` | `0` |
+| `env.ZeroInt64` | `int64` | `0` |
+| `env.ZeroFloat32` | `float32` | `0` |
+| `env.ZeroFloat64` | `float64` | `0` |
+| `env.ZeroBool` | `bool` | `false` |
+| `env.ZeroString` | `string` | `""` |
+| `env.ZeroDuration` | `time.Duration` | `0` |
+| `env.ZeroList` | `[]string` | `[]string{}` |
+| `env.ZeroMap` | `map[string]string` | `map[string]string{}` |
+
+```go
+tags   := env.List("TAGS", env.ZeroList)
+config := env.Map("CONFIG", env.ZeroMap)
+count  := env.Int64("COUNT", env.ZeroInt64)
+```
+
+## Complete example
+
+```go
+package main
+
+import (
+    "fmt"
+    "strings"
+    "time"
+
+    "github.com/andreimerlescu/goenv/env"
+)
+
+func main() {
+    hostname    := env.String("HOSTNAME", "localhost")
+    port        := env.Int("PORT", 3306)
+    username    := env.String("USERNAME", "user")
+    password    := env.String("PASSWORD", "")
+    timeout     := env.UnitDuration("TIMEOUT", 3, time.Second)
+    pi64        := env.Float64("PI", 3.14)
+    pi32        := env.Float32("PI", 3.33)
+    tags        := env.List("TAGS", env.ZeroList)
+    properties  := env.Map("TAGS", env.ZeroMap)
+
+    fmt.Println(
+        hostname,
+        port,
+        username,
+        strings.Repeat("*", len(password)),
+        pi64,
+        pi32,
+        timeout,
+        strings.Join(tags, ","),
+        properties,
+    )
+}
+```

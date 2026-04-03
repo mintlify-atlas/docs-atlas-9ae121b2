@@ -1,0 +1,171 @@
+---
+title: "CLI configuration"
+description: "Environment variables that configure goenv's runtime behavior, including always-on defaults and production protection."
+keywords: ["goenv", "configuration", "environment variables", "runtime", "production", "config file"]
+---
+
+`goenv` reads a set of environment variables at startup to configure its default behavior. These let you set persistent defaults without repeating flags on every command — useful for CI pipelines, shell profiles, and containerized environments.
+
+## Configuration variables
+
+| Variable | Type | Description |
+|---|---|---|
+| `AM_GO_ENV_ALWAYS_WRITE` | bool | Always write changes to disk, as if `-write` were passed |
+| `AM_GO_ENV_ALWAYS_USE_JSON` | bool | Always output JSON, as if `-json` were passed |
+| `AM_GO_ENV_ALWAYS_USE_YAML` | bool | Always output YAML, as if `-yaml` were passed |
+| `AM_GO_ENV_ALWAYS_USE_XML` | bool | Always output XML, as if `-xml` were passed |
+| `AM_GO_ENV_ALWAYS_USE_TOML` | bool | Always output TOML, as if `-toml` were passed |
+| `AM_GO_ENV_ALWAYS_USE_INI` | bool | Always output INI, as if `-ini` were passed |
+| `AM_GO_ENV_ALWAYS_PRINT` | bool | Always print file contents after each operation |
+| `AM_GO_ENV_NEVER_DELETE` | bool | Prevent any deletion operation from executing |
+| `GOENV_NEVER_WRITE_PRODUCTION` | bool | Permanently block writes to production files |
+| `AM_GO_ENV_CONFIG_FILE` | string | Path to a YAML config file (default: `~/.config/goenv/config.yml`) |
+
+Boolean variables are enabled by setting them to any truthy value (`true`, `1`, `yes`).
+
+## Variable reference
+
+### `AM_GO_ENV_ALWAYS_WRITE`
+
+When set, every command that performs a mutation (`-add`, `-rm`, `-mkall`, `-cleanall`) writes the result to disk without requiring the `-write` flag.
+
+```bash
+export AM_GO_ENV_ALWAYS_WRITE=true
+goenv -file app.env -add -env LOG_LEVEL -value debug
+# Variable is written to disk even without -write
+```
+
+### `AM_GO_ENV_ALWAYS_USE_JSON`
+
+Makes every `goenv` run output the env file as JSON. Equivalent to always passing `-json`.
+
+```bash
+export AM_GO_ENV_ALWAYS_USE_JSON=true
+goenv -file app.env
+# Outputs JSON to stdout
+```
+
+<Warning>
+  Do not set more than one `AM_GO_ENV_ALWAYS_USE_*` variable at the same time. `goenv` enforces that only one output format is active at a time. Setting multiple will cause an error and exit `1`.
+</Warning>
+
+### `AM_GO_ENV_ALWAYS_USE_YAML`
+
+Always output YAML.
+
+### `AM_GO_ENV_ALWAYS_USE_XML`
+
+Always output XML.
+
+### `AM_GO_ENV_ALWAYS_USE_TOML`
+
+Always output TOML.
+
+### `AM_GO_ENV_ALWAYS_USE_INI`
+
+Always output INI.
+
+### `AM_GO_ENV_ALWAYS_PRINT`
+
+Always print all `KEY=VALUE` pairs from the file to stdout after the operation, regardless of other flags. Useful during development to confirm the state of a file after every command.
+
+```bash
+export AM_GO_ENV_ALWAYS_PRINT=true
+goenv -file app.env -add -env DEBUG -value true -write
+# Prints all variables after writing
+```
+
+### `AM_GO_ENV_NEVER_DELETE`
+
+Prevents any deletion from executing. When set, `-rm` and `-cleanall` operations are blocked even when `-write` is provided. Use this as a safeguard in environments where accidental deletion would be harmful.
+
+```bash
+export AM_GO_ENV_NEVER_DELETE=true
+goenv -file app.env -rm -env SOME_KEY -write
+# Key is NOT removed; delete is suppressed
+```
+
+### `GOENV_NEVER_WRITE_PRODUCTION`
+
+Permanently block all write operations on files whose path contains `prod`. This variable takes precedence over the `-prod` CLI flag — even an explicit `-prod` flag cannot override it when this variable is set.
+
+```bash
+export GOENV_NEVER_WRITE_PRODUCTION=true
+goenv -file .env.production -add -env KEY -value val -write -prod
+# HALT: PRODUCTION IS PROTECTED! WRITE OPERATION CANCELED.
+```
+
+Set this in your CI environment to ensure production files are never modified through automation.
+
+### `AM_GO_ENV_CONFIG_FILE`
+
+Path to a YAML config file that can supply default flag values. Defaults to `~/.config/goenv/config.yml`. If the file does not exist at the specified path, `goenv` falls back to the default path without error.
+
+```bash
+export AM_GO_ENV_CONFIG_FILE=/etc/goenv/config.yml
+goenv -file app.env -print
+```
+
+## Setting variables in your shell profile
+
+Add the variables you want as persistent defaults to your `~/.bashrc`, `~/.zshrc`, or equivalent:
+
+```bash
+# ~/.bashrc
+
+# Always write changes to disk
+export AM_GO_ENV_ALWAYS_WRITE=true
+
+# Never allow writes to production files
+export GOENV_NEVER_WRITE_PRODUCTION=true
+```
+
+Reload the profile after editing:
+
+```bash
+source ~/.bashrc
+```
+
+## Setting variables in a CI environment
+
+<Tabs>
+  <Tab title="GitHub Actions">
+    ```yaml
+    env:
+      GOENV_NEVER_WRITE_PRODUCTION: "true"
+      AM_GO_ENV_NEVER_DELETE: "true"
+    ```
+  </Tab>
+  <Tab title="GitLab CI">
+    ```yaml
+    variables:
+      GOENV_NEVER_WRITE_PRODUCTION: "true"
+      AM_GO_ENV_NEVER_DELETE: "true"
+    ```
+  </Tab>
+  <Tab title="Shell script">
+    ```bash
+    #!/usr/bin/env bash
+    export GOENV_NEVER_WRITE_PRODUCTION=true
+    export AM_GO_ENV_NEVER_DELETE=true
+
+    goenv -file .env -has -env DATABASE_URL || exit 1
+    ```
+  </Tab>
+</Tabs>
+
+## Config file
+
+You can store default flag values in a YAML file at `~/.config/goenv/config.yml`. This is read by the `figtree` configuration library used internally by `goenv`.
+
+```yaml
+# ~/.config/goenv/config.yml
+file: app.env
+print: true
+```
+
+Use `AM_GO_ENV_CONFIG_FILE` to point to a different location, such as a project-specific config:
+
+```bash
+export AM_GO_ENV_CONFIG_FILE=./goenv.config.yml
+```

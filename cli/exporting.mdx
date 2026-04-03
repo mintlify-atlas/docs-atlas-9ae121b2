@@ -1,0 +1,179 @@
+---
+title: "Exporting to other formats"
+description: "Convert .env files to JSON, YAML, TOML, XML, and INI using goenv's format export flags."
+keywords: ["goenv", "export", "json", "yaml", "toml", "xml", "ini", "mkall", "convert"]
+---
+
+`goenv` can convert any `.env` file into five structured formats: JSON, YAML, TOML, XML, and INI. By default, output is printed to stdout. Add `-write` to save the result as a file alongside the source.
+
+<Note>
+  Export format flags cannot be combined. You cannot use `-json` and `-yaml` together in the same command. Use `-mkall` to generate all formats at once.
+</Note>
+
+## JSON
+
+```bash
+goenv -file sample.env -json
+```
+
+```json
+{
+  "AWS_REGION": "us-west-2",
+  "DATABASE": "test_data",
+  "DBPASS": "readonly",
+  "DBUSER": "readonly",
+  "HOSTNAME": "localhost",
+  "OUTPUT": "json"
+}
+```
+
+Keys are sorted alphabetically in the JSON output. The output is indented with two spaces.
+
+## YAML
+
+```bash
+goenv -file sample.env -yaml
+```
+
+```yaml
+---
+AWS_REGION: "us-west-2" 
+OUTPUT: "json" 
+HOSTNAME: "localhost" 
+DBUSER: "readonly" 
+DBPASS: "readonly" 
+DATABASE: "test_data" 
+```
+
+The document begins with the standard `---` YAML document separator. All values are quoted strings.
+
+## TOML
+
+```bash
+goenv -file sample.env -toml
+```
+
+```toml
+DBPASS: "readonly" 
+DATABASE: "test_data" 
+AWS_REGION: "us-west-2" 
+OUTPUT: "json" 
+HOSTNAME: "localhost" 
+DBUSER: "readonly" 
+```
+
+Each key is written as `KEY: "value"` on its own line. All values are quoted strings.
+
+## XML
+
+```bash
+goenv -file sample.env -xml
+```
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<env>
+   <AWS_REGION>us-west-2</AWS_REGION>
+   <OUTPUT>json</OUTPUT>
+   <HOSTNAME>localhost</HOSTNAME>
+   <DBUSER>readonly</DBUSER>
+   <DBPASS>readonly</DBPASS>
+   <DATABASE>test_data</DATABASE>
+</env>
+```
+
+Each variable becomes a child element of the `<env>` root, using the variable name as the tag name and the value as the text content.
+
+## INI
+
+```bash
+goenv -file sample.env -ini
+```
+
+```ini
+[default]
+OUTPUT = json
+HOSTNAME = localhost
+DBUSER = readonly
+DBPASS = readonly
+DATABASE = test_data
+AWS_REGION = us-west-2
+```
+
+All variables are placed under a `[default]` section. Keys and values are separated by ` = ` (space-equals-space).
+
+## Write output to a file
+
+Add `-write` to any format flag to save the output as a file. The output file is named by appending the format extension to the source file path.
+
+```bash
+goenv -file app.env -json -write
+# Writes: app.env.json
+```
+
+```bash
+goenv -file app.env -yaml -write
+# Writes: app.env.yaml
+```
+
+The source `.env` file is not modified.
+
+## Generate all formats at once
+
+Use `-mkall` to produce all five formats in a single run.
+
+```bash
+goenv -file app.env -mkall
+```
+
+This prints each format to stdout in sequence. Add `-write` to save all format files to disk:
+
+```bash
+goenv -file app.env -mkall -write
+# Writes: app.env.json
+#         app.env.yaml
+#         app.env.toml
+#         app.env.xml
+#         app.env.ini
+```
+
+## Remove generated format files
+
+Use `-cleanall` to remove all format files created by `-mkall`. Combine with `-write` or `-rm` to perform the actual deletion:
+
+```bash
+goenv -file app.env -cleanall -write
+# Removes: app.env.json, app.env.yaml, app.env.toml, app.env.xml, app.env.ini
+```
+
+Without `-write`, `goenv` lists each file that would be removed without deleting it:
+
+```
+The -write flag can be used to remove app.env.json
+The -write flag can be used to remove app.env.yaml
+...
+```
+
+## Format file naming
+
+Output files follow the pattern `<source-file>.<ext>`:
+
+| Source file | Format | Output file |
+|---|---|---|
+| `app.env` | JSON | `app.env.json` |
+| `app.env` | YAML | `app.env.yaml` |
+| `app.env` | TOML | `app.env.toml` |
+| `app.env` | XML | `app.env.xml` |
+| `app.env` | INI | `app.env.ini` |
+| `config/service.env` | JSON | `config/service.env.json` |
+
+## Setting a default output format
+
+You can configure `goenv` to always output a specific format without passing the flag each time. Set the corresponding environment variable in your shell or CI environment:
+
+```bash
+export AM_GO_ENV_ALWAYS_USE_JSON=true
+goenv -file app.env   # always outputs JSON
+```
+
+See [CLI configuration](/cli/configuration) for the full list of always-on format variables.

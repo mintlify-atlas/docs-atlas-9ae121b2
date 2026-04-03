@@ -1,0 +1,136 @@
+---
+title: "Writing env files"
+description: "How to create, add to, and remove variables from .env files using goenv's write operations."
+keywords: ["goenv", "write", "add", "remove", "init", "env file", "production"]
+---
+
+All mutations in `goenv` are opt-in. You must explicitly pass `-write` for any change to be saved to disk. This prevents accidental modifications during read or check operations.
+
+## Create an empty file
+
+Use `-init` to create the target file if it does not already exist. The file is created empty (zero bytes) and `goenv` exits `0`.
+
+```bash
+goenv -init -file app.env
+```
+
+If the file already exists, `-init` has no effect. Combine it with `-write` when you want the file creation to be explicit:
+
+```bash
+goenv -init -write -file n8n.env
+```
+
+<Note>
+  `-init` alone creates the file. You do not need `-write` for the creation itself, but pairing them makes the intent clear in scripts.
+</Note>
+
+## Add a variable
+
+Use `-add -env KEY -value VAL -write` to add a new key-value pair. If the key already exists, the operation is skipped silently — existing values are never overwritten by `-add`.
+
+```bash
+goenv -file app.env -add -env LOG_LEVEL -value info -write
+```
+
+### Writing to a non-existent file
+
+When `-write` is set and the file does not yet exist, `goenv` creates the file automatically and writes the new variable into it. You do not need to run `-init` first.
+
+```bash
+goenv -file new.env -add -env HELLO -value world -write
+```
+
+## Remove a variable
+
+Use `-rm -env KEY -write` to delete a variable from the file. All other variables are preserved.
+
+```bash
+goenv -file app.env -rm -env DEPRECATED_KEY -write
+```
+
+## The `-write` flag
+
+`-write` must accompany any operation that changes the file on disk:
+
+| Operation | Without `-write` | With `-write` |
+|---|---|---|
+| `-add` | Variable added in memory only, not saved | Variable saved to disk |
+| `-rm` | Variable removed in memory only, not saved | Variable removed from disk |
+| `-init` | File created | File created (same behavior) |
+| `-mkall` | Format output printed to stdout | Format files written to disk |
+| `-cleanall` | Candidate files listed | Format files deleted |
+
+You can make `-write` the default for your environment by setting `AM_GO_ENV_ALWAYS_WRITE=true`. See [CLI configuration](/cli/configuration) for details.
+
+## A complete setup workflow
+
+The following workflow from the goenv README shows a full env file setup sequence for an n8n deployment:
+
+```bash
+# Create the file
+goenv -init -write -file n8n.env
+
+# Populate variables
+goenv -write -file n8n.env -add -env DATA_FOLDER -value "$(pwd)"
+goenv -write -file n8n.env -add -env DOMAIN -value "gh.dev"
+goenv -write -file n8n.env -add -env SUBDOMAIN -value "n8n"
+goenv -write -file n8n.env -add -env SSL_EMAIL -value "webmaster@n8n.gh.dev"
+
+# Verify the result
+goenv -file n8n.env -print
+```
+
+```
+DATA_FOLDER=/home/user/services/n8n
+DOMAIN=gh.dev
+SUBDOMAIN=n8n
+SSL_EMAIL=webmaster@n8n.gh.dev
+```
+
+## Production file protection
+
+<Warning>
+  Any file whose path contains the string `prod` is automatically treated as a production file and protected from write operations. Attempting to write to a protected file prints the following error and exits `1`:
+
+  ```
+  HALT: PRODUCTION IS PROTECTED! WRITE OPERATION CANCELED.
+  ```
+</Warning>
+
+### Override protection with `-prod`
+
+Pass `-prod` to explicitly allow writes to a production file:
+
+```bash
+goenv -file .env.production -add -env FEATURE_FLAG -value enabled -write -prod
+```
+
+When `-prod` is used, `goenv` prints a notice:
+
+```
+Using PRODUCTION environment file
+```
+
+### Lock down production in CI
+
+Set `GOENV_NEVER_WRITE_PRODUCTION=true` in your CI environment to enforce the production write block regardless of whether `-prod` is passed. This is a hard lock that cannot be overridden by CLI flags.
+
+```bash
+export GOENV_NEVER_WRITE_PRODUCTION=true
+goenv -file .env.production -add -env KEY -value val -write -prod
+# HALT: PRODUCTION IS PROTECTED! WRITE OPERATION CANCELED.
+```
+
+### How production detection works
+
+`goenv` checks the file path for the substring `prod` using a case-sensitive `strings.Contains` match. The following file paths are all treated as production:
+
+- `.env.production`
+- `config/prod.env`
+- `deploy/production.env`
+
+Files like `.env`, `.env.local`, or `.env.development` are not affected.
+
+<Note>
+  The match is case-sensitive. A file named `Prod.env` or `PROD.env` would **not** be automatically protected. Only paths containing the lowercase string `prod` trigger the production lock.
+</Note>

@@ -1,0 +1,173 @@
+---
+title: "env package overview"
+description: "Type-safe environment variable access for Go applications — read, validate, and configure env vars with zero boilerplate."
+keywords: ["env", "environment variables", "Go", "goenv", "type-safe"]
+---
+
+The `env` package gives Go applications a clean, consistent API for reading environment variables as typed values. Instead of calling `os.Getenv` and manually parsing strings, you call `env.Int("PORT", 8080)` and get an `int` back — with a fallback if the variable is missing or unparseable.
+
+## Installation
+
+```bash
+go get -u github.com/andreimerlescu/goenv/env
+```
+
+## Import paths
+
+The `env` package lives inside the `goenv` module as a subpackage:
+
+```go
+// Subpackage — recommended for library use in your application
+import "github.com/andreimerlescu/goenv/env"
+```
+
+Use this import when you want just the environment-variable library without the CLI. Every function is called as `env.String(...)`, `env.Int(...)`, etc.
+
+<Note>
+  The `env` package reads from the process runtime environment. To load a `.env` file into the environment before your application starts, use the `goenv` CLI with your shell's source mechanism.
+</Note>
+
+## Function categories
+
+| Category | Functions |
+|---|---|
+| **Type functions** | `Bool`, `String`, `Int`, `Int64`, `Float32`, `Float64`, `Duration`, `UnitDuration`, `List`, `Map` |
+| **Existence checks** | `Exists`, `MustExist` |
+| **Truthy checks** | `IsTrue`, `IsFalse`, `AreTrue`, `AreFalse` |
+| **Numeric validation** | `IntLessThan`, `IntGreaterThan`, `IntInRange`, `Int64LessThan`, `Int64GreaterThan`, `Int64InRange` |
+| **Collection validation** | `ListContains`, `ListIsLength`, `ListLength`, `MapHasKey`, `MapHasKeys` |
+| **Set / Unset** | `Set`, `Unset`, `WasSet`, `WasUnset` |
+| **System / OS** | `User` |
+| **Package configuration** | `Magic` |
+
+## The Magic() function
+
+`Magic()` reads all `AM_GO_ENV_*` environment variables at startup and uses them to configure the package's behavior — things like separators, panic policy, and logging. Call it once from your application's `init()` function to apply any environment-level overrides before other code runs.
+
+```go
+func init() {
+    env.Magic()
+}
+```
+
+When `Magic()` runs, it reads variables like `AM_GO_ENV_LIST_SEPARATOR`, `AM_GO_ENV_ALWAYS_ALLOW_PANIC`, and `AM_GO_ENV_ALWAYS_USE_LOGGER` and assigns them to the corresponding package-level variables. This lets operators control package behavior through environment variables alone, without recompiling.
+
+See [Package configuration](/library/configuration) for the full list of variables `Magic()` reads.
+
+## Complete function list
+
+<AccordionGroup>
+  <Accordion title="Functions that can panic()">
+    Controlled by `export AM_GO_ENV_ALWAYS_ALLOW_PANIC=true` or `env.AllowPanic = true`.
+
+    - `func User() (u *user.User)`
+    - `func MustExist(env string)`
+  </Accordion>
+
+  <Accordion title="Type functions">
+    - `func Bool(env string, fallback bool) bool`
+    - `func String(env string, fallback string) string`
+    - `func Int(env string, fallback int) int`
+    - `func Int64(env string, fallback int64) int64`
+    - `func Float32(env string, fallback float32) float32`
+    - `func Float64(env string, fallback float64) float64`
+    - `func Duration(env string, fallback time.Duration) time.Duration`
+    - `func UnitDuration(env string, fallback, unit time.Duration) time.Duration`
+    - `func List(env string, fallback []string) []string`
+    - `func Map(env string, fallback map[string]string) map[string]string`
+  </Accordion>
+
+  <Accordion title="Data control functions">
+    - `func Set(env string, value string) error`
+    - `func Unset(env string) error`
+    - `func WasSet(env string, value string) bool`
+    - `func WasUnset(env string) bool`
+    - `func ListLength(env string, fallback []string) int`
+  </Accordion>
+
+  <Accordion title="Conditional functions">
+    - `func Exists(env string) (ok bool)`
+    - `func IsFalse(env string) (ok bool)`
+    - `func IsTrue(env string) (ok bool)`
+    - `func AreTrue(envs ...string) (ok bool)`
+    - `func AreFalse(envs ...string) (ok bool)`
+    - `func Int64LessThan(env string, fallback, lessThan int64) (ok bool)`
+    - `func Int64GreaterThan(env string, fallback, greaterThan int64) (ok bool)`
+    - `func Int64InRange(env string, fallback, min, max int64) (ok bool)`
+    - `func IntLessThan(env string, fallback, lessThan int) (ok bool)`
+    - `func IntGreaterThan(env string, fallback, greaterThan int) (ok bool)`
+    - `func IntInRange(env string, fallback, min, max int) (ok bool)`
+    - `func ListContains(env string, fallback []string, contains string) (ok bool)`
+    - `func ListIsLength(env string, fallback []string, wantLength int) (ok bool)`
+    - `func MapHasKey(env string, fallback map[string]string, key string) (ok bool)`
+    - `func MapHasKeys(env string, fallback map[string]string, keys ...string) (ok bool)`
+  </Accordion>
+</AccordionGroup>
+
+## Full working example
+
+The following program demonstrates type functions, collections, duration parsing, and package configuration together:
+
+```go
+package main
+
+import (
+    "fmt"
+    "strings"
+    "time"
+
+    "github.com/andreimerlescu/goenv/env"
+)
+
+func init() {
+    // Apply any AM_GO_ENV_* environment variables to configure the package.
+    env.Magic()
+
+    // Require critical variables at startup.
+    env.MustExist("DATABASE_URL")
+}
+
+func main() {
+    // Scalar types — returns fallback if the variable is unset or unparseable.
+    hostname := env.String("HOSTNAME", "localhost")
+    port     := env.Int("PORT", 3306)
+    username := env.String("USERNAME", "user")
+    password := env.String("PASSWORD", "")
+    pi64     := env.Float64("PI", 3.14159265358979)
+    pi32     := env.Float32("PI", 3.14159)
+    debug    := env.Bool("DEBUG", false)
+
+    // Duration — accepts "300ms", "1.5h", or nanosecond integers.
+    timeout := env.Duration("TIMEOUT", 5*time.Second)
+
+    // UnitDuration — TIMEOUT=10 with unit=time.Second means 10 seconds.
+    readTimeout := env.UnitDuration("READ_TIMEOUT", 3, time.Second)
+
+    // Collections — comma-separated by default.
+    tags       := env.List("TAGS", env.ZeroList)
+    properties := env.Map("CONFIG", env.ZeroMap)
+
+    fmt.Println(hostname, port, username, strings.Repeat("*", len(password)))
+    fmt.Println("pi64:", pi64, "pi32:", pi32, "debug:", debug)
+    fmt.Println("timeout:", timeout, "readTimeout:", readTimeout)
+    fmt.Println("tags:", strings.Join(tags, ", "))
+    fmt.Println("properties:", properties)
+}
+```
+
+## Explore the library
+
+<CardGroup cols={2}>
+  <Card title="Type functions" icon="brackets-curly" href="/library/types">
+    Read environment variables as `bool`, `int`, `float`, `string`, `time.Duration`, `[]string`, and `map[string]string`
+  </Card>
+  <Card title="Conditionals and validation" icon="circle-check" href="/library/conditionals">
+    Check existence, truthy state, numeric ranges, and collection membership
+  </Card>
+  <Card title="Package configuration" icon="sliders" href="/library/configuration">
+    Configure separators, loggers, panic behavior, and parsing parameters — programmatically or via environment variables
+  </Card>
+  <Card title="API reference" icon="code" href="/api/bool">
+    Full function signatures, parameter docs, and return types for every exported function
+  </Card>
+</CardGroup>

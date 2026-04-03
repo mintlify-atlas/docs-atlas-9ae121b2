@@ -1,0 +1,247 @@
+---
+title: "Conditionals and validation"
+description: "Check whether environment variables exist, are truthy, fall within numeric ranges, or contain expected values in a list or map."
+keywords: ["env", "Exists", "MustExist", "IsTrue", "IsFalse", "IntInRange", "ListContains", "MapHasKey", "validation"]
+---
+
+The `env` package provides three layers of conditional checks: existence, truthy/falsy state, and structured validation for numeric ranges and collection membership. Use them in `init()` functions to fail fast on bad configuration, or in application logic to branch on optional features.
+
+## Existence checks
+
+### Exists
+
+```go
+func Exists(env string) bool
+```
+
+Returns `true` if the environment variable is set, regardless of its value. A variable set to an empty string (`""`) is still considered set.
+
+```go
+if env.Exists("DATABASE_URL") {
+    // connect using the provided URL
+} else {
+    // fall back to individual host/port/name variables
+}
+```
+
+### MustExist
+
+```go
+func MustExist(env string)
+```
+
+Terminates the program if the environment variable is not set. This is the standard way to enforce required variables at startup.
+
+By default, `MustExist` calls `os.Exit(1)`. When `AllowPanic` is `true`, it calls `panic()` instead — which is catchable in tests.
+
+```go
+func init() {
+    env.MustExist("DATABASE_URL")
+    env.MustExist("SECRET_KEY")
+    env.MustExist("SMTP_HOST")
+}
+```
+
+<Note>
+  `AllowPanic` controls whether `MustExist` panics or calls `os.Exit(1)`. Set it programmatically with `env.AllowPanic = true` or through the environment with `export AM_GO_ENV_ALWAYS_ALLOW_PANIC=true` before calling `env.Magic()`.
+</Note>
+
+## Truthy checks
+
+These functions check whether a variable evaluates to a boolean true or false using the same rules as `Bool` — `"true"`, `"t"`, `"1"` are truthy; `"false"`, `"f"`, `"0"` are falsy.
+
+### IsTrue
+
+```go
+func IsTrue(env string) bool
+```
+
+Returns `true` only if the variable is explicitly set to a truthy value. An unset variable returns `false`.
+
+```go
+// export USE_JSON=true
+if env.IsTrue("USE_JSON") {
+    w.Header().Set("Content-Type", "application/json")
+}
+```
+
+### IsFalse
+
+```go
+func IsFalse(env string) bool
+```
+
+Returns `true` if the variable is set to a falsy value **or is not set at all**. This makes `IsFalse` the logical complement of `IsTrue`.
+
+```go
+// export USE_JSON=false  →  IsFalse returns true
+// USE_JSON not set       →  IsFalse returns true
+if env.IsFalse("USE_JSON") {
+    fmt.Println("Not using JSON.")
+}
+```
+
+### AreTrue
+
+```go
+func AreTrue(envs ...string) bool
+```
+
+Returns `true` only if **all** specified variables are truthy. Short-circuits on the first falsy variable.
+
+```go
+// export ENABLED=true
+// export FEATURE_X_ON=true
+if env.AreTrue("ENABLED", "FEATURE_X_ON") {
+    enableFeatureX()
+}
+```
+
+### AreFalse
+
+```go
+func AreFalse(envs ...string) bool
+```
+
+Returns `true` only if **all** specified variables are falsy or unset. Short-circuits on the first truthy variable.
+
+```go
+if env.AreFalse("DISABLED", "LEGACY_MODE") {
+    // Neither flag is set — run modern code path
+    runModernPath()
+}
+```
+
+## Numeric range validation
+
+Range checks parse the named variable using the corresponding type function (`Int` or `Int64`) and compare it against the provided bounds. All ranges are **inclusive**.
+
+### Int range functions
+
+```go
+func IntLessThan(env string, fallback, lessThan int) bool
+func IntGreaterThan(env string, fallback, greaterThan int) bool
+func IntInRange(env string, fallback, min, max int) bool
+```
+
+```go
+// export RETRIES=2
+if env.IntLessThan("RETRIES", 0, 3) {
+    fmt.Println("Still have retries left.")
+}
+
+// export CONNECTIONS=150
+if env.IntGreaterThan("CONNECTIONS", 0, 100) {
+    log.Fatal("Connection limit exceeded.")
+}
+
+// export PORT=8443
+if !env.IntInRange("PORT", 8080, 1024, 49151) {
+    log.Fatal("PORT must be in user range (1024–49151)")
+}
+```
+
+### Int64 range functions
+
+```go
+func Int64LessThan(env string, fallback, lessThan int64) bool
+func Int64GreaterThan(env string, fallback, greaterThan int64) bool
+func Int64InRange(env string, fallback, min, max int64) bool
+```
+
+```go
+// export HITS=85
+if env.Int64LessThan("HITS", 0, 100) {
+    fmt.Println("Still under threshold.")
+}
+
+// export HITS=1500
+if env.Int64GreaterThan("HITS", 0, 1000) {
+    log.Fatal("Maximum hits received.")
+}
+
+// export YEAR=2023
+if env.Int64InRange("YEAR", 2020, 2000, 2025) {
+    fmt.Println("Valid year!")
+}
+```
+
+## Collection validation
+
+These functions parse the environment variable using `List` or `Map` and then run structural checks against the result.
+
+### List functions
+
+```go
+func ListContains(env string, fallback []string, contains string) bool
+func ListIsLength(env string, fallback []string, wantLength int) bool
+func ListLength(env string, fallback []string) int
+```
+
+`ListContains` performs a **case-insensitive** search.
+
+```go
+// export FEATURES=auth,beta,search
+if env.ListContains("FEATURES", env.ZeroList, "beta") {
+    enableBetaUI()
+}
+
+// Require exactly 3 replica hosts
+if !env.ListIsLength("REPLICA_HOSTS", env.ZeroList, 3) {
+    panic("REPLICA_HOSTS must have exactly 3 items")
+}
+
+// Warn if too many hosts are listed
+if env.ListLength("HOSTS", env.ZeroList) > 10 {
+    log.Println("Warning: more than 10 hosts specified")
+}
+```
+
+### Map functions
+
+```go
+func MapHasKey(env string, fallback map[string]string, key string) bool
+func MapHasKeys(env string, fallback map[string]string, keys ...string) bool
+```
+
+`MapHasKey` checks for a single key. `MapHasKeys` checks that **all** specified keys are present.
+
+```go
+// export CONFIG=host=db.internal,port=5432,ssl=true
+if !env.MapHasKey("CONFIG", env.ZeroMap, "host") {
+    panic("missing required key 'host' in CONFIG")
+}
+
+// Require all three keys to be present
+required := []string{"env", "author", "customer"}
+if env.MapHasKeys("TAGS", env.ZeroMap, required...) {
+    fmt.Println("All required TAGS keys are present.")
+}
+```
+
+## Application startup validation pattern
+
+Combine `MustExist`, range checks, and collection checks in `init()` to validate all required configuration before the application serves any traffic:
+
+```go
+func init() {
+    // Hard requirements — exits if not set
+    env.MustExist("DATABASE_URL")
+    env.MustExist("SECRET_KEY")
+
+    // Port must be in the user port range
+    if !env.IntInRange("PORT", 8080, 1024, 49151) {
+        log.Fatal("PORT must be in user range (1024-49151)")
+    }
+
+    // Replica set requires exactly 3 hosts
+    if !env.ListIsLength("REPLICA_HOSTS", env.ZeroList, 3) {
+        log.Fatal("REPLICA_HOSTS must contain exactly 3 entries")
+    }
+
+    // Config map must include the environment tag
+    if !env.MapHasKey("DEPLOY_TAGS", env.ZeroMap, "environment") {
+        log.Fatal("DEPLOY_TAGS must include an 'environment' key")
+    }
+}
+```

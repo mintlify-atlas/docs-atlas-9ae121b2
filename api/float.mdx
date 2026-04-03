@@ -1,0 +1,83 @@
+---
+title: "env.Float32 / env.Float64"
+description: "Parse floating-point values from environment variables"
+---
+
+## `Float64`
+
+```go
+func Float64(env string, fallback float64) float64
+```
+
+Reads an environment variable and converts it to a `float64` using `strconv.ParseFloat`. The bit size used for the conversion is controlled by the package-level variable `Float64BitSize` (default `64`). Returns `fallback` when the variable is unset or cannot be parsed.
+
+### Parameters
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+
+<ParamField path="fallback" type="float64" required>
+  The value returned when the variable is unset or cannot be parsed.
+</ParamField>
+
+### Return value
+
+Returns a `float64`.
+
+### Examples
+
+```go
+pi := env.Float64("PI", 3.14159)
+```
+
+---
+
+## `Float32`
+
+```go
+func Float32(env string, fallback float32) float32
+```
+
+Reads an environment variable and converts it to a `float32` using `strconv.ParseFloat`. The bit size is controlled by `Float32BitSize` (default `32`). The parsed `float64` value is cast to `float32` before being returned. Returns `fallback` when the variable is unset or cannot be parsed.
+
+### Parameters
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+
+<ParamField path="fallback" type="float32" required>
+  The value returned when the variable is unset or cannot be parsed.
+</ParamField>
+
+### Return value
+
+Returns a `float32`.
+
+### Examples
+
+```go
+ratio := env.Float32("RATIO", float32(0.5))
+```
+
+---
+
+## Configuring bit sizes
+
+The bit size passed to `strconv.ParseFloat` determines the precision range used for overflow detection. Both variables default to their natural sizes:
+
+```go
+env.Float64BitSize = 64 // default — full double precision
+env.Float32BitSize = 32 // default — single precision
+```
+
+These can also be set via the `AM_GO_ENV_FLOAT64_BIT_SIZE` and `AM_GO_ENV_FLOAT32_BIT_SIZE` environment variables when magic initialisation is active.
+
+<Note>
+  Passing `bitSize=32` to `strconv.ParseFloat` still returns a `float64` internally; the value is simply guaranteed to be representable as a `float32`. The `Float32` function performs the final cast to `float32` before returning.
+</Note>
+
+<Warning>
+  Changing `Float64BitSize` or `Float32BitSize` affects all subsequent calls within the same process. Restore the defaults after local customisation if needed.
+</Warning>

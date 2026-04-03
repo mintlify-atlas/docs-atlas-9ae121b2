@@ -1,80 +1,332 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: 'Quickstart'
+description: 'Create and query .env files with the goenv CLI, and read typed environment variables in Go.'
 ---
 
-## Get started in three steps
+<Tabs>
+  <Tab title="CLI">
 
-Get your documentation site running locally and make your first customization.
+## CLI quickstart
 
-### Step 1: Set up your local environment
+<Steps>
+  <Step title="Install the goenv binary">
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    ```bash
+    go install github.com/andreimerlescu/goenv@latest
+    ```
 
-### Step 2: Deploy your changes
+    Verify the installation:
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    ```bash
+    goenv -v
+    ```
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    ```
+    v0.0.2
+    ```
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+  </Step>
 
-### Step 3: Go live
+  <Step title="Initialise an env file">
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    Use `-init` to create an empty `.env` file. The file is created at the path given by `-file`.
 
-## Next steps
+    ```bash
+    goenv -init -file n8n.env
+    ```
 
-Now that you have your docs running, explore these key features:
+    If the file already exists, `-init` is a no-op — it will not overwrite existing content.
 
-<CardGroup cols={2}>
+  </Step>
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
+  <Step title="Add variables">
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
+    Use `-write -add` to append variables to the file. goenv skips the write if the variable already exists.
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
+    ```bash
+    goenv -write -file n8n.env -add -env DATA_FOLDER -value "$(pwd)"
+    goenv -write -file n8n.env -add -env DOMAIN     -value "gh.dev"
+    goenv -write -file n8n.env -add -env SUBDOMAIN  -value "n8n"
+    ```
 
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
+  </Step>
 
-</CardGroup>
+  <Step title="Check that a variable exists">
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+    Use `-has` to check for a variable. goenv exits with code `0` if the variable is present and `1` if it is not.
+
+    ```bash
+    goenv -file n8n.env -has -env DATA_FOLDER
+    ```
+
+    Pair `-not` with `-has` to invert the check:
+
+    ```bash
+    goenv -file n8n.env -not -has -env MISSING_VAR || echo "variable not found"
+    ```
+
+    <Tip>
+      The exit code semantics make goenv easy to use as a guard in shell scripts and CI pipelines. A `-has` check that fails will cause a script running with `set -e` to stop immediately.
+    </Tip>
+
+  </Step>
+
+  <Step title="Print the file contents">
+
+    Use `-print` to display all variables in `KEY=VALUE` format:
+
+    ```bash
+    goenv -file n8n.env -print
+    ```
+
+    Example output from the test suite:
+
+    ```
+    AWS_REGION=us-west-2
+    OUTPUT=json
+    HOSTNAME=localhost
+    DBUSER=readonly
+    DBPASS=readonly
+    DATABASE=test_data
+    ```
+
+  </Step>
+
+  <Step title="Export to other formats">
+
+    goenv can convert a `.env` file to JSON, YAML, TOML, XML, or INI. Each flag prints to stdout.
+
+    <CodeGroup>
+
+    ```bash json
+    goenv -file n8n.env -json
+    ```
+
+    ```bash yaml
+    goenv -file n8n.env -yaml
+    ```
+
+    ```bash toml
+    goenv -file n8n.env -toml
+    ```
+
+    ```bash xml
+    goenv -file n8n.env -xml
+    ```
+
+    ```bash ini
+    goenv -file n8n.env -ini
+    ```
+
+    </CodeGroup>
+
+    The following shows real terminal output from the test suite using `sample.env`:
+
+    <CodeGroup>
+
+    ```json -json output
+    {
+      "AWS_REGION": "us-west-2",
+      "DATABASE": "test_data",
+      "DBPASS": "readonly",
+      "DBUSER": "readonly",
+      "HOSTNAME": "localhost",
+      "OUTPUT": "json"
+    }
+    ```
+
+    ```yaml -yaml output
+    ---
+    AWS_REGION: "us-west-2" 
+    OUTPUT: "json" 
+    HOSTNAME: "localhost" 
+    DBUSER: "readonly" 
+    DBPASS: "readonly" 
+    DATABASE: "test_data" 
+    ```
+
+    ```toml -toml output
+    DBPASS: "readonly" 
+    DATABASE: "test_data" 
+    AWS_REGION: "us-west-2" 
+    OUTPUT: "json" 
+    HOSTNAME: "localhost" 
+    DBUSER: "readonly" 
+    ```
+
+    ```xml -xml output
+    <?xml version="1.0" encoding="UTF-8"?>
+    <env>
+       <AWS_REGION>us-west-2</AWS_REGION>
+       <OUTPUT>json</OUTPUT>
+       <HOSTNAME>localhost</HOSTNAME>
+       <DBUSER>readonly</DBUSER>
+       <DBPASS>readonly</DBPASS>
+       <DATABASE>test_data</DATABASE>
+    </env>
+    ```
+
+    ```ini -ini output
+    [default]
+    OUTPUT = json
+    HOSTNAME = localhost
+    DBUSER = readonly
+    DBPASS = readonly
+    DATABASE = test_data
+    AWS_REGION = us-west-2
+    ```
+
+    </CodeGroup>
+
+    Use `-mkall` to write all formats to disk at once (creates `n8n.env.json`, `n8n.env.yaml`, etc.):
+
+    ```bash
+    goenv -file n8n.env -mkall
+    ```
+
+  </Step>
+</Steps>
+
+  </Tab>
+  <Tab title="Library">
+
+## Library quickstart
+
+<Steps>
+  <Step title="Add the env package">
+
+    ```bash
+    go get github.com/andreimerlescu/goenv/env
+    ```
+
+  </Step>
+
+  <Step title="Import and read typed values">
+
+    The `env` package exposes a typed getter for every common Go type. Each function accepts the variable name and a fallback value. If the variable is not set, or if the value cannot be parsed, the fallback is returned.
+
+    <CodeGroup>
+
+    ```go main.go
+    package main
+
+    import (
+        "fmt"
+        "strings"
+        "time"
+
+        "github.com/andreimerlescu/goenv/env"
+    )
+
+    func main() {
+        // String — falls back to "localhost" if HOSTNAME is not set
+        hostname := env.String("HOSTNAME", "localhost")
+
+        // Int — falls back to 3306 if PORT is not set or cannot be parsed
+        port := env.Int("PORT", 3306)
+
+        // Bool — returns true only if the variable is "true", "t", or "1"
+        debug := env.Bool("DEBUG", false)
+
+        // Duration — accepts strings like "30s", "1h", or an integer in nanoseconds
+        timeout := env.Duration("TIMEOUT", 5*time.Second)
+
+        // UnitDuration — WRITE_TIMEOUT=30 becomes 30 * time.Second
+        writeTimeout := env.UnitDuration("WRITE_TIMEOUT", 30, time.Second)
+
+        // List — splits TAGS="go,docker,linux" on "," by default
+        tags := env.List("TAGS", env.ZeroList)
+
+        // Map — splits DATA="key1=val1,key2=val2" on "," and "=" by default
+        properties := env.Map("DATA", env.ZeroMap)
+
+        fmt.Printf("host=%s port=%d debug=%v timeout=%v writeTimeout=%v\n",
+            hostname, port, debug, timeout, writeTimeout)
+        fmt.Printf("tags=%s\n", strings.Join(tags, ", "))
+        fmt.Printf("properties=%v\n", properties)
+    }
+    ```
+
+    ```go validation.go
+    package main
+
+    import (
+        "log"
+
+        "github.com/andreimerlescu/goenv/env"
+    )
+
+    func init() {
+        // MustExist exits the process (or panics, if AM_GO_ENV_ALWAYS_ALLOW_PANIC=true)
+        // when a required variable is not set.
+        env.MustExist("DATABASE_URL")
+        env.MustExist("API_KEY")
+
+        // Validate numeric ranges
+        if !env.IntInRange("PORT", 8080, 1024, 49151) {
+            log.Fatal("PORT must be between 1024 and 49151")
+        }
+    }
+    ```
+
+    </CodeGroup>
+
+    <Tip>
+      Every getter takes a fallback as its second argument. Your program will never panic due to a missing variable unless you call `env.MustExist` explicitly.
+    </Tip>
+
+  </Step>
+
+  <Step title="Load a .env file before reading variables">
+
+    The `env` package reads from the process environment via `os.Getenv`. To source a `.env` file before your program starts, load it in your shell or `Makefile`:
+
+    ```bash
+    # Export every variable from n8n.env into the current shell, then run the binary
+    export $(goenv -file n8n.env -print | xargs) && ./myapp
+    ```
+
+  </Step>
+
+  <Step title="Configure list and map separators">
+
+    Override the package-level separator variables before calling `List` or `Map`:
+
+    ```go
+    package main
+
+    import (
+        "fmt"
+
+        "github.com/andreimerlescu/goenv/env"
+    )
+
+    func main() {
+        // Change the separator used by env.List (default is ",")
+        env.Set("HOSTS", "web1|web2|web3")
+        env.ListSeparator = "|"
+        hosts := env.List("HOSTS", env.ZeroList)
+        fmt.Println(hosts) // [web1 web2 web3]
+
+        // Change the separators used by env.Map (defaults are "," and "=")
+        env.Set("LABELS", "region~us-east|tier~prod")
+        env.MapSeparator = "|"
+        env.MapItemSeparator = "~"
+        labels := env.Map("LABELS", env.ZeroMap)
+        fmt.Println(labels) // map[region:us-east tier:prod]
+    }
+    ```
+
+    You can also configure separators via environment variables so that all binaries sharing the package inherit the same behaviour:
+
+    | Variable | Default | Controls |
+    |---|---|---|
+    | `AM_GO_ENV_LIST_SEPARATOR` | `,` | `env.List` split character |
+    | `AM_GO_ENV_MAP_SEPARATOR` | `,` | `env.Map` item separator |
+    | `AM_GO_ENV_MAP_ITEM_SEPARATOR` | `=` | `env.Map` key/value separator |
+
+  </Step>
+</Steps>
+
+  </Tab>
+</Tabs>

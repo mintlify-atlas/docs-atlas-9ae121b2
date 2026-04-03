@@ -1,97 +1,83 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "goenv"
+description: "A Go CLI tool and library for reading, writing, and transforming .env files across multiple formats and environments."
 ---
 
-## Setting up
+`goenv` gives you a fast, scriptable way to work with `.env` files from the command line — and a clean Go package for type-safe environment variable access in your applications.
 
-Get your documentation site up and running in minutes.
+Whether you need to check if a key exists, add new variables, or export your `.env` to JSON, YAML, TOML, XML, or INI, `goenv` handles it with simple flag-based commands and exit codes designed for shell scripting.
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Install goenv and run your first commands in minutes
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="CLI Reference" icon="terminal" href="/cli/flags">
+    Explore all flags and command patterns
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="env Package" icon="cube" href="/library/overview">
+    Use the Go library for type-safe env access in your app
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="API Reference" icon="code" href="/api/bool">
+    Full function signatures and parameter docs
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## What you can do
 
-Everything you need to create world-class documentation.
+<CardGroup cols={2}>
+  <Card title="Read & check variables" icon="magnifying-glass" href="/cli/reading">
+    Check for key existence and value equality with exit-code-based scripting support
+  </Card>
+  <Card title="Write & modify files" icon="pen" href="/cli/writing">
+    Add, update, and remove variables, with production file protection built in
+  </Card>
+  <Card title="Export to any format" icon="file-export" href="/cli/exporting">
+    Convert .env files to JSON, YAML, TOML, XML, and INI on demand
+  </Card>
+  <Card title="Use in Go applications" icon="golang" href="/library/types">
+    Import the env package to read typed environment variables with fallback values
+  </Card>
+</CardGroup>
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+## Installation
 
-## Need inspiration?
+<Steps>
+  <Step title="Install the CLI">
+    ```bash
+    go install github.com/andreimerlescu/goenv@latest
+    ```
+  </Step>
+  <Step title="Create or initialize an env file">
+    ```bash
+    goenv -init -file app.env
+    ```
+  </Step>
+  <Step title="Add your first variable">
+    ```bash
+    goenv -file app.env -add -env APP_ENV -value production -write
+    ```
+  </Step>
+  <Step title="Verify it was written">
+    ```bash
+    goenv -file app.env -print
+    # APP_ENV=production
+    ```
+  </Step>
+</Steps>
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+## Use the Go library
+
+Import the `env` package directly in your Go applications for type-safe access to environment variables:
+
+```go
+import "github.com/andreimerlescu/goenv/env"
+
+host := env.String("HOSTNAME", "localhost")
+port := env.Int("PORT", 8080)
+debug := env.Bool("DEBUG", false)
+timeout := env.Duration("TIMEOUT", 5*time.Second)
+```
+
+<Note>
+  The `env` package reads from the runtime environment (not from `.env` files directly). Use the `goenv` CLI to load `.env` files into your shell before running your application.
+</Note>

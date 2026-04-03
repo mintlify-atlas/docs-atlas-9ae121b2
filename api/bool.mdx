@@ -1,0 +1,130 @@
+---
+title: "env.Bool"
+description: "Parse a boolean value from an environment variable"
+---
+
+## `Bool`
+
+```go
+func Bool(env string, fallback bool) bool
+```
+
+Reads an environment variable and parses it as a boolean. If the variable is unset or the value fails to parse, the `fallback` is returned. Internally uses `strconv.ParseBool`.
+
+### Parameters
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+
+<ParamField path="fallback" type="bool" required>
+  The value returned when the variable is unset or cannot be parsed.
+</ParamField>
+
+### Return value
+
+Returns a `bool`. The parsed value if the variable is set and valid, otherwise `fallback`.
+
+### Accepted values
+
+| Value | Interpretation |
+|-------|----------------|
+| `"true"`, `"t"`, `"1"` | `true` |
+| `"false"`, `"f"`, `"0"` | `false` |
+
+Any other string causes a parse error; `fallback` is returned and the error is logged if logging is enabled.
+
+### Examples
+
+```go
+debug := env.Bool("DEBUG", false)
+verbose := env.Bool("VERBOSE", false)
+
+// When AM_GO_ENV_ALWAYS_ALLOW_PANIC=true is set, a parse failure will panic
+// instead of silently returning the fallback.
+useFeature := env.Bool("FEATURE_X", false)
+```
+
+---
+
+## `IsTrue`
+
+```go
+func IsTrue(env string) bool
+```
+
+Returns `true` only when the environment variable is explicitly set to a truthy value (`"true"`, `"t"`, or `"1"`). Equivalent to `Bool(env, false)`.
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to check.
+</ParamField>
+
+```go
+if env.IsTrue("USE_JSON") {
+    // format output as JSON
+}
+```
+
+---
+
+## `IsFalse`
+
+```go
+func IsFalse(env string) bool
+```
+
+Returns `true` when the variable is set to a falsy value **or is not set at all**. Equivalent to `!Bool(env, false)`.
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to check.
+</ParamField>
+
+```go
+if env.IsFalse("USE_JSON") {
+    fmt.Println("Not using JSON.")
+}
+```
+
+<Note>
+  Because an unset variable makes `Bool` return the fallback of `false`, `IsFalse` returns `true` for unset variables. Use `Exists` first if you need to distinguish "unset" from "explicitly false".
+</Note>
+
+---
+
+## `AreTrue`
+
+```go
+func AreTrue(envs ...string) bool
+```
+
+Returns `true` only when **every** named variable is truthy. Short-circuits on the first falsy or unset variable.
+
+<ParamField path="envs" type="...string" required>
+  One or more environment variable names to check.
+</ParamField>
+
+```go
+if env.AreTrue("ENABLED", "FEATURE_X_ON") {
+    // both flags are explicitly true
+}
+```
+
+---
+
+## `AreFalse`
+
+```go
+func AreFalse(envs ...string) bool
+```
+
+Returns `true` only when **every** named variable is falsy or unset. Short-circuits on the first truthy variable.
+
+<ParamField path="envs" type="...string" required>
+  One or more environment variable names to check.
+</ParamField>
+
+```go
+if env.AreFalse("DISABLED", "LEGACY_MODE") {
+    // neither flag is set — proceed with modern behaviour
+}
+```

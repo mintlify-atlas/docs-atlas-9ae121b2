@@ -1,0 +1,69 @@
+---
+title: 'Introduction'
+description: 'goenv is a CLI tool and Go library for reading, writing, and converting .env files.'
+---
+
+goenv gives you two things: a `goenv` binary for shell scripting and CI pipelines, and an `env` Go package for reading typed values from the process environment. Both are open source under the Apache 2.0 license.
+
+<CardGroup cols={2}>
+  <Card title="goenv CLI" icon="terminal" href="/quickstart">
+    A command-line tool for creating, querying, and converting `.env` files. Export to JSON, YAML, TOML, XML, or INI without writing any code.
+  </Card>
+  <Card title="env package" icon="code" href="/library/overview">
+    A Go library for reading typed environment variables — strings, integers, booleans, durations, lists, and maps — with safe fallbacks.
+  </Card>
+</CardGroup>
+
+## What goenv does
+
+Many tools consume `.env` files, but working with them from a shell script or CI pipeline is awkward. goenv fills that gap:
+
+- **Check existence** — exit with a non-zero code if a required variable is missing, making it useful as a guard in scripts.
+- **Write variables** — add or remove variables from a file, creating the file if necessary.
+- **Convert formats** — transform a `.env` file into JSON, YAML, TOML, XML, or INI for tools that don't speak `.env`.
+- **Read typed values in Go** — call `env.String`, `env.Int`, `env.Bool`, or `env.Duration` instead of calling `os.Getenv` and parsing the result yourself.
+
+## Supported .env file conventions
+
+goenv recognises the standard set of environment file names used by Node.js, Docker Compose, and similar tooling:
+
+| File | Purpose |
+|------|---------|
+| `.env` | Default environment file |
+| `.env.local` | Local developer overrides, not committed to source control |
+| `.env.development` | Development environment settings |
+| `.env.production` | Production environment settings |
+
+<Note>
+Files whose path contains `prod` are treated as production files and are write-protected by default. Pass `-prod` explicitly, or set `GOENV_NEVER_WRITE_PRODUCTION=false` in your environment, to override this behaviour.
+</Note>
+
+## Installation
+
+### CLI
+
+Install the `goenv` binary with `go install`:
+
+```bash
+go install github.com/andreimerlescu/goenv@latest
+```
+
+The binary is placed in `$GOPATH/bin` (or `$HOME/go/bin`). Make sure that directory is on your `$PATH`.
+
+### Go library
+
+Add the `env` package to your module with `go get`:
+
+```bash
+go get github.com/andreimerlescu/goenv/env
+```
+
+Then import it in your Go code:
+
+```go
+import "github.com/andreimerlescu/goenv/env"
+```
+
+## Next steps
+
+Follow the [quickstart](/quickstart) to create your first `.env` file with the CLI and read variables from it in a Go program.

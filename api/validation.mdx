@@ -1,0 +1,258 @@
+---
+title: "Validation functions"
+description: "Validate numeric ranges and collection contents"
+---
+
+## Overview
+
+The validation functions let you assert constraints on environment variable values at startup or during runtime checks. They all follow the same pattern: parse the variable (falling back to a provided default), test the parsed value against the constraint, and return a boolean result.
+
+---
+
+## Numeric range validation
+
+### `env.IntLessThan`
+
+```go
+func IntLessThan(env string, fallback, lessThan int) (ok bool)
+```
+
+Returns `true` if the integer value of the variable is strictly less than `lessThan`.
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+<ParamField path="fallback" type="int" required>
+  Value used when the variable is not set or cannot be parsed.
+</ParamField>
+<ParamField path="lessThan" type="int" required>
+  The exclusive upper bound to compare against.
+</ParamField>
+
+---
+
+### `env.IntGreaterThan`
+
+```go
+func IntGreaterThan(env string, fallback, greaterThan int) bool
+```
+
+Returns `true` if the integer value of the variable is strictly greater than `greaterThan`.
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+<ParamField path="fallback" type="int" required>
+  Value used when the variable is not set or cannot be parsed.
+</ParamField>
+<ParamField path="greaterThan" type="int" required>
+  The exclusive lower bound to compare against.
+</ParamField>
+
+---
+
+### `env.IntInRange`
+
+```go
+func IntInRange(env string, fallback, min, max int) bool
+```
+
+Returns `true` if the integer value of the variable is within `[min, max]` (inclusive on both ends).
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+<ParamField path="fallback" type="int" required>
+  Value used when the variable is not set or cannot be parsed.
+</ParamField>
+<ParamField path="min" type="int" required>
+  Inclusive lower bound of the valid range.
+</ParamField>
+<ParamField path="max" type="int" required>
+  Inclusive upper bound of the valid range.
+</ParamField>
+
+---
+
+### `env.Int64LessThan`
+
+```go
+func Int64LessThan(env string, fallback, lessThan int64) (ok bool)
+```
+
+Returns `true` if the `int64` value of the variable is strictly less than `lessThan`.
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+<ParamField path="fallback" type="int64" required>
+  Value used when the variable is not set or cannot be parsed.
+</ParamField>
+<ParamField path="lessThan" type="int64" required>
+  The exclusive upper bound to compare against.
+</ParamField>
+
+---
+
+### `env.Int64GreaterThan`
+
+```go
+func Int64GreaterThan(env string, fallback, greaterThan int64) (ok bool)
+```
+
+Returns `true` if the `int64` value of the variable is strictly greater than `greaterThan`.
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+<ParamField path="fallback" type="int64" required>
+  Value used when the variable is not set or cannot be parsed.
+</ParamField>
+<ParamField path="greaterThan" type="int64" required>
+  The exclusive lower bound to compare against.
+</ParamField>
+
+---
+
+### `env.Int64InRange`
+
+```go
+func Int64InRange(env string, fallback, min, max int64) (ok bool)
+```
+
+Returns `true` if the `int64` value of the variable is within `[min, max]` (inclusive on both ends).
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+<ParamField path="fallback" type="int64" required>
+  Value used when the variable is not set or cannot be parsed.
+</ParamField>
+<ParamField path="min" type="int64" required>
+  Inclusive lower bound of the valid range.
+</ParamField>
+<ParamField path="max" type="int64" required>
+  Inclusive upper bound of the valid range.
+</ParamField>
+
+---
+
+## Collection validation
+
+### `env.ListContains`
+
+```go
+func ListContains(env string, fallback []string, contains string) (ok bool)
+```
+
+Parses the variable as a delimited list (using `ListSeparator`, default `","`) and returns `true` if any element matches `contains`. The comparison is **case-insensitive**.
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+<ParamField path="fallback" type="string[]" required>
+  List used when the variable is not set. Pass `env.ZeroList` for an empty default.
+</ParamField>
+<ParamField path="contains" type="string" required>
+  The value to search for (case-insensitive).
+</ParamField>
+
+---
+
+### `env.ListIsLength`
+
+```go
+func ListIsLength(env string, fallback []string, wantLength int) (ok bool)
+```
+
+Returns `true` if the parsed list has exactly `wantLength` elements.
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+<ParamField path="fallback" type="string[]" required>
+  List used when the variable is not set. Pass `env.ZeroList` for an empty default.
+</ParamField>
+<ParamField path="wantLength" type="int" required>
+  The exact number of elements required.
+</ParamField>
+
+---
+
+### `env.ListLength`
+
+```go
+func ListLength(env string, fallback []string) int
+```
+
+Returns the number of elements in the parsed list. Use this when you need the count for more complex logic rather than a fixed comparison.
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+<ParamField path="fallback" type="string[]" required>
+  List used when the variable is not set. Pass `env.ZeroList` for an empty default.
+</ParamField>
+
+---
+
+### `env.MapHasKey`
+
+```go
+func MapHasKey(env string, fallback map[string]string, key string) (ok bool)
+```
+
+Parses the variable as a `key=value` map (using `MapSeparator` and `MapItemSeparator`) and returns `true` if `key` is present.
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+<ParamField path="fallback" type="object" required>
+  Map used when the variable is not set. Pass `env.ZeroMap` for an empty default.
+</ParamField>
+<ParamField path="key" type="string" required>
+  The key to look up in the parsed map.
+</ParamField>
+
+---
+
+### `env.MapHasKeys`
+
+```go
+func MapHasKeys(env string, fallback map[string]string, keys ...string) (ok bool)
+```
+
+Returns `true` only if **all** specified keys are present in the parsed map.
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+<ParamField path="fallback" type="object" required>
+  Map used when the variable is not set. Pass `env.ZeroMap` for an empty default.
+</ParamField>
+<ParamField path="keys" type="string[]" required>
+  One or more keys that must all be present in the parsed map.
+</ParamField>
+
+---
+
+## Startup validation example
+
+The following pattern validates all configuration constraints in an `init()` function, producing actionable error messages before any application code runs.
+
+```go
+func init() {
+    if !env.IntInRange("PORT", 8080, 1024, 49151) {
+        log.Fatal("PORT must be between 1024 and 49151")
+    }
+    if !env.Int64GreaterThan("MAX_FILE_SIZE", 0, 0) {
+        log.Fatal("MAX_FILE_SIZE must be positive")
+    }
+    if !env.ListContains("LOG_LEVEL", env.ZeroList, "info") {
+        log.Fatal("LOG_LEVEL must be 'info', 'warn', 'error', or 'debug'")
+    }
+    if !env.MapHasKeys("DB_CONFIG", env.ZeroMap, "host", "port", "name") {
+        log.Fatal("DB_CONFIG must contain host, port, and name")
+    }
+}
+```

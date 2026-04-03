@@ -1,0 +1,139 @@
+---
+title: "Reading env files"
+description: "How to read, inspect, and check variables in .env files using goenv's print and check flags."
+keywords: ["goenv", "read", "print", "has", "is", "check", "env file"]
+---
+
+`goenv` provides three ways to read from an env file: printing all contents, checking whether a key exists, and checking whether a key has a specific value. Each method exits with a code that you can use directly in shell scripts.
+
+## Print all variables
+
+Use `-print` to dump every `KEY=VALUE` pair in the file to stdout.
+
+```bash
+goenv -file app.env -print
+```
+
+```
+AWS_REGION=us-west-2
+DATABASE=test_data
+DBPASS=readonly
+DBUSER=readonly
+HOSTNAME=localhost
+OUTPUT=json
+```
+
+You can combine `-print` with mutation operations to see the final state of the file after a change:
+
+```bash
+goenv -file app.env -add -env NEW_VAR -value hello -write -print
+```
+
+## Check if a key exists
+
+Use `-has -env KEY` to test whether a variable is present. `goenv` exits `0` if the key exists, `1` if it does not.
+
+```bash
+goenv -file app.env -has -env DATABASE_URL
+```
+
+No output is produced by default. The result is communicated entirely through the exit code.
+
+### Check absence with `-not`
+
+Combine `-not` with `-has` to reverse the logic: exit `0` when the key is **absent**.
+
+```bash
+goenv -file app.env -not -has -env LEGACY_API_KEY
+```
+
+| Condition | Exit code |
+|---|---|
+| Key exists | `0` |
+| Key does not exist | `1` |
+| `-not -has`, key exists | `1` |
+| `-not -has`, key absent | `0` |
+
+## Check a value with `-is`
+
+Use `-is -env KEY -value VAL` to verify that a specific key holds a specific value. `goenv` exits `0` if the value matches, `1` if it does not.
+
+```bash
+goenv -file app.env -is -env DATABASE -value test_data
+```
+
+### Negate a value check
+
+Use `-not -is` to exit `0` when the value does **not** match.
+
+```bash
+goenv -file app.env -not -is -env APP_ENV -value production
+```
+
+| Condition | Exit code |
+|---|---|
+| Value matches | `0` |
+| Value does not match | `1` |
+| `-not -is`, value matches | `1` |
+| `-not -is`, value does not match | `0` |
+
+## Using exit codes in shell scripts
+
+<Tip>
+  Because `goenv` communicates check results through exit codes, you can use it directly in `if` statements, `&&` chains, and CI/CD conditionals without parsing any output.
+</Tip>
+
+### Guard a block on key existence
+
+```bash
+if goenv -file app.env -has -env DATABASE_URL; then
+  echo "Database configured"
+else
+  echo "DATABASE_URL is missing" >&2
+  exit 1
+fi
+```
+
+### Fail fast if a required key is absent
+
+```bash
+goenv -file app.env -has -env API_SECRET || { echo "API_SECRET required"; exit 1; }
+```
+
+### Verify a value before deploying
+
+```bash
+if goenv -file app.env -is -env APP_ENV -value production; then
+  echo "Running production deploy"
+  ./deploy.sh
+fi
+```
+
+### Assert a key is not present
+
+```bash
+if goenv -file app.env -not -has -env DEBUG; then
+  echo "Debug mode is off — safe to deploy"
+fi
+```
+
+### Combine checks in a CI pipeline
+
+```bash
+# Verify all required variables are configured before running tests
+goenv -file .env -has -env DATABASE_URL   || exit 1
+goenv -file .env -has -env REDIS_URL      || exit 1
+goenv -file .env -has -env SECRET_KEY     || exit 1
+
+echo "Environment validated — starting test suite"
+```
+
+## Checking against a non-existent file
+
+If the file does not exist and neither `-init` nor `-write` is provided, `goenv` prints an error to stderr and exits `1`:
+
+```
+app.env does not exists, use -write to create
+```
+
+This means read operations reliably fail fast when a required file is missing, making them safe to use as precondition checks.

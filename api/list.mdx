@@ -1,0 +1,132 @@
+---
+title: "env.List"
+description: "Parse a delimited string into a []string slice"
+---
+
+## `List`
+
+```go
+func List(env string, fallback []string) []string
+```
+
+Reads an environment variable, splits it on `ListSeparator` (default `","`), trims whitespace from every element, and filters out empty strings. Returns `fallback` when the variable is unset.
+
+### Parameters
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+
+<ParamField path="fallback" type="[]string" required>
+  The slice returned when the variable is unset. Use `env.ZeroList` when you want an empty slice without allocating a literal.
+</ParamField>
+
+### Return value
+
+Returns a `[]string`. The slice contains one element per non-empty, trimmed token found in the variable's value.
+
+### Examples
+
+```go
+tags := env.List("TAGS", env.ZeroList)
+// TAGS="go,docker,linux" → []string{"go", "docker", "linux"}
+
+hosts := env.List("HOSTS", []string{"localhost"})
+// HOSTS unset → []string{"localhost"}
+```
+
+### Custom separator
+
+`ListSeparator` is a package-level variable and can be changed before calling `List`:
+
+```go
+env.ListSeparator = "|"
+items := env.List("ITEMS", env.ZeroList)
+// ITEMS="a|b|c" → []string{"a", "b", "c"}
+```
+
+The separator can also be set via the `AM_GO_ENV_LIST_SEPARATOR` environment variable when magic initialisation is active.
+
+<Note>
+  Whitespace trimming happens per element, not on the whole string. A value like `"go, docker , linux"` produces `[]string{"go", "docker", "linux"}`.
+</Note>
+
+---
+
+## `ListContains`
+
+```go
+func ListContains(env string, fallback []string, contains string) bool
+```
+
+Parses the list from the environment variable and reports whether any element equals `contains` (case-insensitive comparison via `strings.EqualFold`).
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+
+<ParamField path="fallback" type="[]string" required>
+  Passed to `List` if the variable is unset.
+</ParamField>
+
+<ParamField path="contains" type="string" required>
+  The string to search for (case-insensitive).
+</ParamField>
+
+```go
+if env.ListContains("FEATURES", env.ZeroList, "beta") {
+    // beta feature flag is present
+}
+```
+
+---
+
+## `ListIsLength`
+
+```go
+func ListIsLength(env string, fallback []string, wantLength int) bool
+```
+
+Parses the list and returns `true` only when its length equals `wantLength` exactly.
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+
+<ParamField path="fallback" type="[]string" required>
+  Passed to `List` if the variable is unset.
+</ParamField>
+
+<ParamField path="wantLength" type="int" required>
+  The exact length the parsed list must have.
+</ParamField>
+
+```go
+if !env.ListIsLength("HOSTS", env.ZeroList, 3) {
+    panic("env HOSTS must have exactly 3 items")
+}
+```
+
+---
+
+## `ListLength`
+
+```go
+func ListLength(env string, fallback []string) int
+```
+
+Parses the list and returns its length. Equivalent to `len(env.List(env, fallback))`.
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+
+<ParamField path="fallback" type="[]string" required>
+  Passed to `List` if the variable is unset.
+</ParamField>
+
+```go
+if env.ListLength("HOSTS", env.ZeroList) > 3 {
+    fmt.Println("Warning: too many hosts specified.")
+}
+```

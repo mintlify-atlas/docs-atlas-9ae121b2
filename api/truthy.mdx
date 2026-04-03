@@ -1,0 +1,98 @@
+---
+title: "Truthy checks"
+description: "Check if environment variables are true or false"
+---
+
+## Overview
+
+The truthy functions interpret environment variable values as boolean signals. They accept the standard Go boolean string representations: `"true"`, `"t"`, and `"1"` as truthy; `"false"`, `"f"`, and `"0"` as falsy.
+
+---
+
+## `env.IsTrue`
+
+```go
+func IsTrue(env string) (ok bool)
+```
+
+Returns `true` only if the variable is explicitly set to a truthy value (`"true"`, `"t"`, or `"1"`). An unset variable or any other value returns `false`.
+
+### Parameters
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to check.
+</ParamField>
+
+---
+
+## `env.IsFalse`
+
+```go
+func IsFalse(env string) (ok bool)
+```
+
+Returns `true` if the variable is set to a falsy value (`"false"`, `"f"`, or `"0"`), **or** if the variable is not set at all. This is the logical negation of `IsTrue`.
+
+### Parameters
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to check.
+</ParamField>
+
+---
+
+## `env.AreTrue`
+
+```go
+func AreTrue(envs ...string) (ok bool)
+```
+
+Returns `true` only if **all** specified variables are truthy. Short-circuits on the first variable that is not true — remaining variables are not checked.
+
+### Parameters
+
+<ParamField path="envs" type="string[]" required>
+  One or more environment variable names. All must be truthy for the function to return `true`.
+</ParamField>
+
+---
+
+## `env.AreFalse`
+
+```go
+func AreFalse(envs ...string) (ok bool)
+```
+
+Returns `true` only if **all** specified variables are falsy or unset. Short-circuits on the first variable that is true — remaining variables are not checked.
+
+### Parameters
+
+<ParamField path="envs" type="string[]" required>
+  One or more environment variable names. All must be falsy or unset for the function to return `true`.
+</ParamField>
+
+---
+
+## Examples
+
+```go
+if env.IsTrue("FEATURE_X_ENABLED") {
+    // enable feature X
+}
+
+if env.IsFalse("LEGACY_MODE") {
+    // use new code path
+}
+
+if env.AreTrue("FEATURE_X_ON", "FEATURE_Y_ON") {
+    // both features active
+}
+
+if env.AreFalse("MAINTENANCE_MODE", "RATE_LIMITED") {
+    // normal operation
+}
+```
+
+<Tip>
+Prefer `IsTrue` and `IsFalse` over `env.Bool` for feature flags. The intent is clearer at the call site — a reader can immediately understand "this code runs only when the flag is explicitly enabled" without needing to trace a boolean fallback value.
+</Tip>

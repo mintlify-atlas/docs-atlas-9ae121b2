@@ -1,0 +1,192 @@
+---
+title: "CLI flags reference"
+description: "Complete reference for every flag accepted by the goenv CLI, with types, defaults, and usage notes."
+keywords: ["goenv", "flags", "cli", "reference", "options"]
+---
+
+All flags use a single dash (`-flag`) and are passed directly on the command line. Boolean flags do not require a value — their presence alone enables the feature.
+
+## Flags overview
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `-file` | string | `.env` | Path to the env file to read or write |
+| `-env` | string | — | Environment variable name to target |
+| `-value` | string | — | Value to check or assign |
+| `-add` | bool | `false` | Add a new variable to the file |
+| `-rm` | bool | `false` | Remove a variable from the file |
+| `-has` | bool | `false` | Check if a variable exists |
+| `-is` | bool | `false` | Check if a variable equals a value |
+| `-not` | bool | `false` | Negate the result of `-has` or `-is` |
+| `-write` | bool | `false` | Write changes to disk |
+| `-init` | bool | `false` | Create the file if it does not exist |
+| `-print` | bool | `false` | Print file contents after the operation |
+| `-prod` | bool | `false` | Allow interaction with `.env.production` |
+| `-json` | bool | `false` | Output as JSON |
+| `-yaml` | bool | `false` | Output as YAML |
+| `-toml` | bool | `false` | Output as TOML |
+| `-xml` | bool | `false` | Output as XML |
+| `-ini` | bool | `false` | Output as INI |
+| `-mkall` | bool | `false` | Generate all format files at once |
+| `-cleanall` | bool | `false` | Remove all generated format files |
+| `-vv` | bool | `false` | Enable verbose output |
+| `-v` | bool | `false` | Print the version and exit |
+
+## File targeting
+
+<ParamField path="-file" type="string" default=".env">
+  Path to the env file to process. Accepts any relative or absolute path. When omitted alongside `-write` or `-init`, defaults to `.env` (or `.env.production` when `-prod` is set).
+
+  ```bash
+  goenv -file config/app.env -print
+  ```
+</ParamField>
+
+## Variable targeting
+
+<ParamField path="-env" type="string">
+  The name of the environment variable to read, write, check, or remove. Used with `-add`, `-rm`, `-has`, and `-is`.
+
+  ```bash
+  goenv -file app.env -has -env DATABASE_URL
+  ```
+</ParamField>
+
+<ParamField path="-value" type="string">
+  The value to assign (with `-add`) or compare against (with `-is`).
+
+  ```bash
+  goenv -file app.env -is -env APP_ENV -value production
+  ```
+</ParamField>
+
+## Mutation flags
+
+<ParamField path="-add" type="boolean" default="false">
+  Add a new variable to the file. If the key already exists, the operation is skipped silently. Requires `-env` and `-value`. Combine with `-write` to persist the change.
+
+  ```bash
+  goenv -file app.env -add -env LOG_LEVEL -value info -write
+  ```
+</ParamField>
+
+<ParamField path="-rm" type="boolean" default="false">
+  Remove a variable from the file. Requires `-env`. Combine with `-write` to persist the change.
+
+  ```bash
+  goenv -file app.env -rm -env DEPRECATED_KEY -write
+  ```
+</ParamField>
+
+<ParamField path="-write" type="boolean" default="false">
+  Write the result of the current operation back to disk. Without this flag, mutations (`-add`, `-rm`) are computed but not saved. Can be set permanently via the `AM_GO_ENV_ALWAYS_WRITE` environment variable.
+</ParamField>
+
+<ParamField path="-init" type="boolean" default="false">
+  Create the target file if it does not already exist. When combined with `-write`, an empty file is created and the process exits with code `0`.
+
+  ```bash
+  goenv -init -file n8n.env
+  ```
+</ParamField>
+
+## Checking flags
+
+<ParamField path="-has" type="boolean" default="false">
+  Check whether `-env` exists in the file. Exits `0` if the key is present, `1` if it is absent.
+
+  ```bash
+  goenv -file app.env -has -env DATABASE_URL
+  ```
+</ParamField>
+
+<ParamField path="-is" type="boolean" default="false">
+  Check whether the value of `-env` equals `-value`. Exits `0` if they match, `1` if they do not.
+
+  ```bash
+  goenv -file app.env -is -env APP_ENV -value production
+  ```
+</ParamField>
+
+<ParamField path="-not" type="boolean" default="false">
+  Inverts the exit code of `-has` or `-is`. Exits `0` when the condition is **false**.
+
+  ```bash
+  goenv -file app.env -not -has -env LEGACY_KEY
+  ```
+</ParamField>
+
+## Output flags
+
+<ParamField path="-print" type="boolean" default="false">
+  Print all `KEY=VALUE` pairs from the file to stdout after the operation completes. Can be set permanently via `AM_GO_ENV_ALWAYS_PRINT`.
+</ParamField>
+
+<ParamField path="-json" type="boolean" default="false">
+  Output the file contents as a JSON object. Cannot be combined with `-yaml`, `-toml`, `-xml`, or `-ini`. Use `-mkall` to generate all formats at once.
+</ParamField>
+
+<ParamField path="-yaml" type="boolean" default="false">
+  Output the file contents as a YAML document.
+</ParamField>
+
+<ParamField path="-toml" type="boolean" default="false">
+  Output the file contents as TOML key-value pairs.
+</ParamField>
+
+<ParamField path="-xml" type="boolean" default="false">
+  Output the file contents as an XML document with an `<env>` root element.
+</ParamField>
+
+<ParamField path="-ini" type="boolean" default="false">
+  Output the file contents as an INI file with a `[default]` section.
+</ParamField>
+
+<ParamField path="-mkall" type="boolean" default="false">
+  Generate all five output formats in a single run. Adds `.json`, `.yaml`, `.toml`, `.xml`, and `.ini` extensions to the source file path. Combine with `-write` to save the generated files to disk.
+
+  ```bash
+  goenv -file app.env -mkall -write
+  # Writes: app.env.json, app.env.yaml, app.env.toml, app.env.xml, app.env.ini
+  ```
+</ParamField>
+
+<ParamField path="-cleanall" type="boolean" default="false">
+  Remove all format files generated by `-mkall`. Combine with `-write` or `-rm` to perform the actual deletion.
+
+  ```bash
+  goenv -file app.env -cleanall -write
+  ```
+</ParamField>
+
+## Production flag
+
+<ParamField path="-prod" type="boolean" default="false">
+  Allow write operations on files whose path contains `prod`. Without this flag, any file with `prod` in its path is treated as production and protected from writes. See [writing env files](/cli/writing) for details on production protection.
+</ParamField>
+
+## Diagnostic flags
+
+<ParamField path="-vv" type="boolean" default="false">
+  Enable verbose output. Prints the file path being used, which output format is selected, and a completion message.
+</ParamField>
+
+<ParamField path="-v" type="boolean" default="false">
+  Print the current version of `goenv` and exit immediately.
+
+  ```bash
+  goenv -v
+  # v0.0.2
+  ```
+</ParamField>
+
+## Exit codes
+
+<Note>
+  `goenv` uses exit codes for scripting. Exit code `0` means success or true; exit code `1` means failure or false. This applies to all checking operations (`-has`, `-is`) as well as to error conditions. Use `$?` in shell scripts to read the exit code after each command.
+
+  ```bash
+  goenv -file app.env -has -env API_KEY
+  echo $?   # 0 = key exists, 1 = key not found
+  ```
+</Note>

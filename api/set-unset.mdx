@@ -1,0 +1,151 @@
+---
+title: "Set and Unset"
+description: "Set, unset, and verify environment variables at runtime"
+---
+
+## Overview
+
+These functions modify the process environment at runtime. They wrap the standard `os.Setenv` and `os.Unsetenv` calls and add optional logging and verification behavior.
+
+---
+
+## `env.Set`
+
+```go
+func Set(env string, value string) error
+```
+
+Wraps `os.Setenv`. Sets the environment variable to `value` for the duration of the current process. Returns an error if the operation fails. When `ShowVerbose` is `true`, logs the operation via `OutLogger`.
+
+### Parameters
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to set.
+</ParamField>
+<ParamField path="value" type="string" required>
+  The value to assign to the variable.
+</ParamField>
+
+### Example
+
+```go
+err := env.Set("BACKUPS_DIR", "/tmp/backups")
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+---
+
+## `env.Unset`
+
+```go
+func Unset(env string) error
+```
+
+Wraps `os.Unsetenv`. Removes the variable from the process environment. Returns an error if the operation fails. When `ShowVerbose` is `true`, logs the operation via `OutLogger`.
+
+### Parameters
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to remove.
+</ParamField>
+
+### Example
+
+```go
+err := env.Unset("OLD_VAR")
+if err != nil {
+    log.Printf("failed to unset OLD_VAR: %v", err)
+}
+```
+
+---
+
+## `env.WasSet`
+
+```go
+func WasSet(env string, value string) bool
+```
+
+Sets the variable and immediately reads it back to verify the value was applied correctly. Returns `false` if either the `os.Setenv` call fails or the subsequent `os.LookupEnv` returns a different value. Returns `true` only when the variable is confirmed to hold exactly the value that was passed.
+
+### Parameters
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to set.
+</ParamField>
+<ParamField path="value" type="string" required>
+  The value to assign. This value is compared against the read-back result to confirm correctness.
+</ParamField>
+
+### Example
+
+```go
+if !env.WasSet("BACKUPS_DIR", filepath.Join(env.User().HomeDir, "backups")) {
+    log.Fatal("failed to configure BACKUPS_DIR")
+}
+```
+
+<Note>
+Prefer `WasSet` over `Set` when you need confirmation that the value was correctly applied before continuing. `Set` returns only the OS-level error; `WasSet` also catches the case where the environment accepted the call but stored a different value.
+</Note>
+
+---
+
+## `env.WasUnset`
+
+```go
+func WasUnset(env string) bool
+```
+
+Unsets the variable and returns `true` if the operation succeeded, `false` if it failed.
+
+### Parameters
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to remove.
+</ParamField>
+
+### Example
+
+```go
+if !env.WasUnset("TEMP_TOKEN") {
+    log.Println("warning: failed to clear TEMP_TOKEN from environment")
+}
+```
+
+---
+
+## `env.User`
+
+```go
+func User() (u *user.User)
+```
+
+Returns the current OS user by calling `os/user.Current()`. Useful when constructing paths relative to the user's home directory at runtime, as shown in the `WasSet` example above.
+
+On error, behavior depends on two global variables:
+
+| `AllowPanic` | `PanicNoUser` | Behavior |
+| --- | --- | --- |
+| `false` | any | Logs the error; returns a default user with `HomeDir` set to `os.TempDir()` |
+| `true` | `false` | Logs the error; returns the default user |
+| `true` | `true` | Calls `panic()` |
+
+The default fallback user has `Uid: "-1"`, `Gid: "-1"`, `Username: "unknown"`, and `Name: "Unknown"`.
+
+### Parameters
+
+None.
+
+### Example
+
+```go
+homeDir := env.User().HomeDir
+configPath := filepath.Join(homeDir, ".config", "myapp")
+```
+
+<Warning>
+`PanicNoUser` has no effect unless `AllowPanic` is also `true`. Set both to opt into panic behavior when `user.Current()` fails.
+</Warning>

@@ -1,0 +1,194 @@
+---
+title: "Package configuration"
+description: "Configure the env package's behavior — logging, panic policy, separators, and numeric parsing — programmatically or through AM_GO_ENV_* environment variables."
+keywords: ["env", "configuration", "Magic", "ListSeparator", "MapSeparator", "AllowPanic", "UseLogger", "AM_GO_ENV"]
+---
+
+The `env` package exposes package-level variables you can set directly in your code. Every variable also has a corresponding `AM_GO_ENV_*` environment variable that can set it automatically at startup when you call `env.Magic()`.
+
+## The Magic() function
+
+```go
+func Magic()
+```
+
+`Magic()` reads all `AM_GO_ENV_*` environment variables and assigns them to the corresponding package variables. Call it once, early — typically from an `init()` function — so all subsequent calls use the configured values.
+
+```go
+func init() {
+    env.Magic()
+}
+```
+
+This lets you configure the package entirely through the operating environment without changing application code. For example, to enable verbose logging in a deployment:
+
+```bash
+export AM_GO_ENV_ALWAYS_USE_LOGGER=true
+export AM_GO_ENV_ENABLE_VERBOSE_LOGGING=true
+```
+
+Then in code:
+
+```go
+func init() {
+    env.Magic() // reads the two variables above and sets UseLogger + EnableVerboseLogging
+}
+```
+
+---
+
+## Runtime control variables
+
+These variables govern logging, panic behavior, and error reporting.
+
+| Variable | Type | Default | Description |
+|---|---|---|---|
+| `UseLogger` | `bool` | `false` | Enable `OutLogger` and `ErrLogger` for output |
+| `AllowPanic` | `bool` | `false` | Permit `panic()` in `MustExist` and `User` |
+| `PanicNoUser` | `bool` | `false` | Panic on `User()` error instead of returning a default |
+| `PrintErrors` | `bool` | `false` | Write errors to stderr |
+| `EnableVerboseLogging` | `bool` | `false` | Write debug output to `OutLogger` |
+| `OutLogger` | `*log.Logger` | stdout logger | Custom STDOUT logger |
+| `ErrLogger` | `*log.Logger` | stderr logger | Custom STDERR logger |
+
+<Note>
+  `OutLogger` and `ErrLogger` are only used when `UseLogger` is `true` (or `AM_GO_ENV_ALWAYS_USE_LOGGER=true`). Setting a custom logger without enabling `UseLogger` has no effect.
+</Note>
+
+### Custom loggers example
+
+```go
+import (
+    "log"
+    "os"
+
+    "github.com/andreimerlescu/goenv/env"
+)
+
+func init() {
+    env.UseLogger  = true
+    env.OutLogger  = log.New(os.Stdout, "[env] ", log.LstdFlags)
+    env.ErrLogger  = log.New(os.Stderr, "[env:err] ", log.LstdFlags|log.Lshortfile)
+    env.PrintErrors = true
+    env.EnableVerboseLogging = true
+}
+```
+
+---
+
+## Data control variables
+
+These variables change how the package parses collections and numeric types.
+
+### Separators
+
+| Variable | Type | Default | Description |
+|---|---|---|---|
+| `ListSeparator` | `string` | `","` | Delimiter used by `List` to split values |
+| `MapSeparator` | `string` | `","` | Delimiter used by `Map` to split key=value pairs |
+| `MapItemSeparator` | `string` | `"="` | Delimiter used by `Map` to split each key from its value |
+| `MapSplitN` | `int` | `2` | `n` argument passed to `strings.SplitN` for map items |
+
+### Numeric parsing parameters
+
+| Variable | Type | Default | Description |
+|---|---|---|---|
+| `Float64BitSize` | `int` | `64` | `bitSize` for `strconv.ParseFloat` in `Float64` |
+| `Float32BitSize` | `int` | `32` | `bitSize` for `strconv.ParseFloat` in `Float32` |
+| `DurationBase` | `int` | `10` | `base` for `strconv.ParseInt` in `Duration` |
+| `DurationBitSize` | `int` | `64` | `bitSize` for `strconv.ParseInt` in `Duration` |
+| `UnitDurationBase` | `int` | `10` | `base` for `strconv.ParseInt` in `UnitDuration` |
+| `UnitDurationBitSize` | `int` | `64` | `bitSize` for `strconv.ParseInt` in `UnitDuration` |
+| `Int64Base` | `int` | `10` | `base` for `strconv.ParseInt` in `Int64` |
+| `Int64BitSize` | `int` | `64` | `bitSize` for `strconv.ParseInt` in `Int64` |
+
+### Configuring custom separators
+
+```go
+// Pipe-delimited list
+env.Set("TEST_LIST", "item1|item2|item3")
+env.ListSeparator = "|"
+items := env.List("TEST_LIST", env.ZeroList)
+// items == []string{"item1", "item2", "item3"}
+
+// Pipe-delimited map with tilde key/value separator
+env.Set("TEST_MAP", "key1~value1|key2~value2")
+env.MapSeparator     = "|"
+env.MapItemSeparator = "~"
+env.MapSplitN        = 2 // default
+
+properties := env.Map("TEST_MAP", env.ZeroMap)
+// properties == map[string]string{"key1": "value1", "key2": "value2"}
+```
+
+---
+
+## AM_GO_ENV_* environment variables
+
+All package variables can be set through environment variables. These are read by `Magic()` at startup. Set them before the binary starts (in shell, systemd unit file, Kubernetes `env:` block, etc.).
+
+| Environment variable | Type | Default | Description |
+|---|---|---|---|
+| `AM_GO_ENV_MAP_SEPARATOR` | `string` | `,` | How map pairs are separated |
+| `AM_GO_ENV_MAP_ITEM_SEPARATOR` | `string` | `=` | How keys and values within a pair are separated |
+| `AM_GO_ENV_MAP_SPLIT_N` | `int` | `2` | `strings.SplitN` `n` value for map item splitting |
+| `AM_GO_ENV_LIST_SEPARATOR` | `string` | `,` | How list items are separated |
+| `AM_GO_ENV_UNIT_DURATION_BASE` | `int` | `10` | `strconv.ParseInt` base for `UnitDuration` |
+| `AM_GO_ENV_UNIT_DURATION_BIT_SIZE` | `int` | `64` | `strconv.ParseInt` bitSize for `UnitDuration` |
+| `AM_GO_ENV_DURATION_BASE` | `int` | `10` | `strconv.ParseInt` base for `Duration` |
+| `AM_GO_ENV_DURATION_BIT_SIZE` | `int` | `64` | `strconv.ParseInt` bitSize for `Duration` |
+| `AM_GO_ENV_FLOAT64_BIT_SIZE` | `int` | `64` | `strconv.ParseFloat` bitSize for `Float64` |
+| `AM_GO_ENV_FLOAT32_BIT_SIZE` | `int` | `32` | `strconv.ParseFloat` bitSize for `Float32` |
+| `AM_GO_ENV_INT64_BASE` | `int` | `10` | `strconv.ParseInt` base for `Int64` |
+| `AM_GO_ENV_INT64_BIT_SIZE` | `int` | `64` | `strconv.ParseInt` bitSize for `Int64` |
+| `AM_GO_ENV_ALWAYS_ALLOW_PANIC` | `bool` | `false` | Permit `panic()` in `MustExist` and `User` |
+| `AM_GO_ENV_ALWAYS_PRINT_ERRORS` | `bool` | `false` | Write errors to stderr |
+| `AM_GO_ENV_ALWAYS_USE_LOGGER` | `bool` | `false` | Enable `OutLogger` and `ErrLogger` |
+| `AM_GO_ENV_ENABLE_VERBOSE_LOGGING` | `bool` | `false` | Write debug output to `OutLogger` |
+| `AM_GO_ENV_PANIC_NO_USER` | `bool` | `false` | Panic instead of returning a default on `User()` error |
+
+---
+
+## Zero values
+
+The package exports named zero values for every supported type. Use them as explicit "empty" fallbacks:
+
+```go
+count   := env.Int64("COUNT", env.ZeroInt64)
+ratio   := env.Float64("RATIO", env.ZeroFloat64)
+flag    := env.Bool("FLAG", env.ZeroBool)
+name    := env.String("NAME", env.ZeroString)
+wait    := env.Duration("WAIT", env.ZeroDuration)
+tags    := env.List("TAGS", env.ZeroList)
+config  := env.Map("CONFIG", env.ZeroMap)
+```
+
+| Variable | Type | Value |
+|---|---|---|
+| `ZeroInt` | `int` | `0` |
+| `ZeroInt64` | `int64` | `0` |
+| `ZeroFloat32` | `float32` | `0` |
+| `ZeroFloat64` | `float64` | `0` |
+| `ZeroBool` | `bool` | `false` |
+| `ZeroString` | `string` | `""` |
+| `ZeroDuration` | `time.Duration` | `0` |
+| `ZeroUnitDuration` | `time.Duration` | `0` |
+| `ZeroList` | `[]string` | `[]string{}` |
+| `ZeroMap` | `map[string]string` | `map[string]string{}` |
+
+---
+
+## Constants
+
+The package defines the `AM_GO_ENV_*` variable names as constants so you can reference them without hardcoding strings:
+
+```go
+// Example: read a specific AM_GO_ENV variable directly
+separator := env.String(env.AmGoEnvListSeparator, ",")
+```
+
+The `LogFlags` constant defines the default flags used when constructing `OutLogger` and `ErrLogger`:
+
+```go
+const LogFlags int = log.Ldate | log.Ltime | log.Lshortfile
+```

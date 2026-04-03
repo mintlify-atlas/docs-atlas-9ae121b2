@@ -1,0 +1,114 @@
+---
+title: "env.Duration / env.UnitDuration"
+description: "Parse time.Duration values from environment variables"
+---
+
+## `Duration`
+
+```go
+func Duration(env string, fallback time.Duration) time.Duration
+```
+
+Reads an environment variable and parses it as a `time.Duration`. The function tries two strategies in order:
+
+1. **Duration string** — passes the value to `time.ParseDuration`. Accepts any string that `time.ParseDuration` understands, such as `"300ms"`, `"1.5h"`, or `"2m30s"`.
+2. **Integer nanoseconds** — if the first attempt fails, passes the value to `strconv.ParseInt` (using `DurationBase` and `DurationBitSize`) and interprets the result as a nanosecond count.
+
+Returns `fallback` when the variable is unset or neither strategy succeeds.
+
+### Parameters
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+
+<ParamField path="fallback" type="time.Duration" required>
+  The value returned when the variable is unset or cannot be parsed.
+</ParamField>
+
+### Return value
+
+Returns a `time.Duration`.
+
+### Examples
+
+```go
+timeout := env.Duration("TIMEOUT", 5*time.Second)
+// TIMEOUT="1.5h"   → 1h30m0s
+// TIMEOUT="300ms"  → 300ms
+// TIMEOUT="1000"   → 1µs  (1000 nanoseconds)
+```
+
+### Configuring integer parsing
+
+When the value is an integer (nanoseconds path), the base and bit size for `strconv.ParseInt` are taken from:
+
+| Variable | Default | Environment override |
+|----------|---------|----------------------|
+| `DurationBase` | `10` | `AM_GO_ENV_DURATION_BASE` |
+| `DurationBitSize` | `64` | `AM_GO_ENV_DURATION_BIT_SIZE` |
+
+---
+
+## `UnitDuration`
+
+```go
+func UnitDuration(env string, fallback, unit time.Duration) time.Duration
+```
+
+Similar to `Duration`, but the parsed value is multiplied by `unit`. This lets you store plain numbers in environment variables and define the unit in code.
+
+The function tries two strategies in order:
+
+1. **Duration string** — parses with `time.ParseDuration`. If successful, the result is multiplied by `unit`.
+2. **Integer × unit** — if the duration-string parse fails, parses as an integer with `strconv.ParseInt` (using `UnitDurationBase` / `UnitDurationBitSize`) and multiplies by `unit`.
+
+<Warning>
+  The `fallback` value is **also** multiplied by `unit`. `UnitDuration("X", 5, time.Second)` with `X` unset returns `5 * time.Second`, not `5`.
+</Warning>
+
+<Warning>
+  When the variable holds a full duration string (e.g. `"1m30s"`), `time.ParseDuration` succeeds and the result is **still multiplied by `unit`**. This means `UnitDuration("X", 0, time.Second)` with `X="2m"` returns `2*time.Minute * time.Second`. If you want to store duration strings as-is, use `env.Duration` instead.
+</Warning>
+
+### Parameters
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+
+<ParamField path="fallback" type="time.Duration" required>
+  The fallback value before multiplication by `unit`. If the variable is unset, the function returns `fallback * unit`.
+</ParamField>
+
+<ParamField path="unit" type="time.Duration" required>
+  The unit to multiply the parsed (or fallback) value by. Applied to all code paths including duration string parsing.
+</ParamField>
+
+### Return value
+
+Returns a `time.Duration`.
+
+### Examples
+
+```go
+// REQUEST_TIMEOUT is stored as a plain integer in seconds
+reqTimeout := env.UnitDuration("REQUEST_TIMEOUT", 30, time.Second)
+// REQUEST_TIMEOUT="10"  → 10 * time.Second = 10s
+// REQUEST_TIMEOUT unset → 30 * time.Second = 30s
+
+// POLL_INTERVAL stored as milliseconds
+poll := env.UnitDuration("POLL_INTERVAL", 250, time.Millisecond)
+// POLL_INTERVAL="500" → 500 * time.Millisecond = 500ms
+```
+
+<Note>
+  Use `env.Duration` when you want to store full duration strings like `"1m30s"` and have them used directly without any unit multiplication.
+</Note>
+
+### Configuring integer parsing
+
+| Variable | Default | Environment override |
+|----------|---------|----------------------|
+| `UnitDurationBase` | `10` | `AM_GO_ENV_UNIT_DURATION_BASE` |
+| `UnitDurationBitSize` | `64` | `AM_GO_ENV_UNIT_DURATION_BIT_SIZE` |

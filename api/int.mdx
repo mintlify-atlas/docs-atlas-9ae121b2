@@ -1,0 +1,164 @@
+---
+title: "env.Int / env.Int64"
+description: "Parse integer values from environment variables"
+---
+
+## `Int`
+
+```go
+func Int(env string, fallback int) int
+```
+
+Reads an environment variable and converts it to a plain `int` using `strconv.Atoi`. Returns `fallback` when the variable is unset or the value is not a valid integer.
+
+### Parameters
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+
+<ParamField path="fallback" type="int" required>
+  The value returned when the variable is unset or cannot be parsed.
+</ParamField>
+
+### Return value
+
+Returns an `int`.
+
+### Examples
+
+```go
+port := env.Int("PORT", 3306)
+maxConns := env.Int("MAX_CONNECTIONS", 100)
+```
+
+---
+
+## `Int64`
+
+```go
+func Int64(env string, fallback int64) int64
+```
+
+Reads an environment variable and converts it to an `int64` using `strconv.ParseInt`. The numeric base and bit size are controlled by the package-level variables `Int64Base` (default `10`) and `Int64BitSize` (default `64`).
+
+### Parameters
+
+<ParamField path="env" type="string" required>
+  The name of the environment variable to read.
+</ParamField>
+
+<ParamField path="fallback" type="int64" required>
+  The value returned when the variable is unset or cannot be parsed.
+</ParamField>
+
+### Return value
+
+Returns an `int64`.
+
+### Examples
+
+```go
+ns := env.Int64("NANOSECONDS", int64(1_000_000_000))
+```
+
+### Configuring base and bit size
+
+The parsing behaviour can be adjusted before calling `Int64`:
+
+```go
+env.Int64Base = 16    // parse the variable as hexadecimal
+env.Int64BitSize = 32 // overflow-check against a 32-bit range
+```
+
+These variables can also be set via the `AM_GO_ENV_INT64_BASE` and `AM_GO_ENV_INT64_BIT_SIZE` environment variables when the package's magic initialisation is active.
+
+<Note>
+  Changing `Int64Base` or `Int64BitSize` affects every subsequent call to `Int64` within the same process. Restore the defaults (`10` and `64`) after parsing if the change should be local.
+</Note>
+
+---
+
+## Comparison helpers
+
+The following helpers parse a value with `Int` or `Int64` and then compare it.
+
+### `IntLessThan`
+
+```go
+func IntLessThan(env string, fallback, lessThan int) bool
+```
+
+Returns `true` when the parsed value is strictly less than `lessThan`.
+
+```go
+if env.IntLessThan("RETRIES", 0, 3) {
+    fmt.Println("Still have retries left.")
+}
+```
+
+### `IntGreaterThan`
+
+```go
+func IntGreaterThan(env string, fallback, greaterThan int) bool
+```
+
+Returns `true` when the parsed value is strictly greater than `greaterThan`.
+
+```go
+if env.IntGreaterThan("CONNECTIONS", 0, 100) {
+    log.Fatal("Connection limit exceeded.")
+}
+```
+
+### `IntInRange`
+
+```go
+func IntInRange(env string, fallback, min, max int) bool
+```
+
+Returns `true` when the parsed value is within `[min, max]` (inclusive on both ends).
+
+```go
+if env.IntInRange("PORT", 8080, 1024, 49151) {
+    fmt.Println("Port is in the user range.")
+}
+```
+
+### `Int64LessThan`
+
+```go
+func Int64LessThan(env string, fallback, lessThan int64) bool
+```
+
+```go
+if env.Int64LessThan("HITS", 0, 100) {
+    fmt.Println("Still under threshold.")
+}
+```
+
+### `Int64GreaterThan`
+
+```go
+func Int64GreaterThan(env string, fallback, greaterThan int64) bool
+```
+
+```go
+if env.Int64GreaterThan("HITS", 0, 1000) {
+    log.Fatal("Maximum hits received.")
+}
+```
+
+### `Int64InRange`
+
+```go
+func Int64InRange(env string, fallback, min, max int64) bool
+```
+
+Returns `true` when the parsed value is within `[min, max]` (inclusive).
+
+```go
+if env.Int64InRange("YEAR", 2020, 2000, 2025) {
+    fmt.Println("Valid year!")
+}
+```

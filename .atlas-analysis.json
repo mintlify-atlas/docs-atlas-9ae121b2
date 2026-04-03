@@ -1,0 +1,126 @@
+{
+  "projectType": "cli-tool",
+  "projectName": "goenv",
+  "projectDescription": "A Go CLI tool and library for reading, writing, and transforming .env files across multiple formats and environments.",
+  "theme": "luma",
+  "primaryColor": "#3D9970",
+  "lightColor": "#E8F5EF",
+  "darkColor": "#1A4A33",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "CLI Reference",
+            "pages": [
+              "cli/flags",
+              "cli/reading",
+              "cli/writing",
+              "cli/exporting",
+              "cli/configuration"
+            ]
+          },
+          {
+            "group": "env Package",
+            "pages": [
+              "library/overview",
+              "library/types",
+              "library/conditionals",
+              "library/configuration"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Type Functions",
+            "pages": [
+              "api/bool",
+              "api/string",
+              "api/int",
+              "api/float",
+              "api/duration",
+              "api/list",
+              "api/map"
+            ]
+          },
+          {
+            "group": "Control Functions",
+            "pages": [
+              "api/exists",
+              "api/truthy",
+              "api/validation",
+              "api/set-unset"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Read and write .env files from the command line",
+    "Export .env content to JSON, YAML, TOML, XML, and INI formats",
+    "Check for key existence and value equality with exit-code-based scripting support",
+    "Production file protection to prevent accidental writes",
+    "Importable Go `env` package for type-safe environment variable access",
+    "Support for .env, .env.local, .env.development, .env.production conventions",
+    "Bulk export all formats at once with -mkall flag",
+    "Configurable via environment variables for CI/CD pipelines"
+  ],
+  "publicApiSurface": [
+    "goenv -file <path> -has -env <KEY>",
+    "goenv -file <path> -is -env <KEY> -value <VAL>",
+    "goenv -file <path> -add -env <KEY> -value <VAL> -write",
+    "goenv -file <path> -rm -env <KEY> -write",
+    "goenv -file <path> -print",
+    "goenv -file <path> -json",
+    "goenv -file <path> -yaml",
+    "goenv -file <path> -toml",
+    "goenv -file <path> -xml",
+    "goenv -file <path> -ini",
+    "goenv -file <path> -mkall -write",
+    "goenv -init -file <path>",
+    "env.Bool(name string, fallback bool) bool",
+    "env.String(name string, fallback string) string",
+    "env.Int(name string, fallback int) int",
+    "env.Int64(name string, fallback int64) int64",
+    "env.Float32(name string, fallback float32) float32",
+    "env.Float64(name string, fallback float64) float64",
+    "env.Duration(name string, fallback time.Duration) time.Duration",
+    "env.UnitDuration(name string, fallback, unit time.Duration) time.Duration",
+    "env.List(name string, fallback []string) []string",
+    "env.Map(name string, fallback map[string]string) map[string]string",
+    "env.Exists(name string) bool",
+    "env.MustExist(name string)",
+    "env.IsTrue(name string) bool",
+    "env.IsFalse(name string) bool",
+    "env.AreTrue(names ...string) bool",
+    "env.AreFalse(names ...string) bool",
+    "env.Set(name, value string) error",
+    "env.Unset(name string) error",
+    "env.WasSet(name, value string) bool",
+    "env.WasUnset(name string) bool",
+    "env.ListContains(name string, fallback []string, contains string) bool",
+    "env.ListIsLength(name string, fallback []string, wantLength int) bool",
+    "env.MapHasKey(name string, fallback map[string]string, key string) bool",
+    "env.MapHasKeys(name string, fallback map[string]string, keys ...string) bool",
+    "env.Int64LessThan(name string, fallback, lessThan int64) bool",
+    "env.Int64GreaterThan(name string, fallback, greaterThan int64) bool",
+    "env.Int64InRange(name string, fallback, min, max int64) bool",
+    "env.IntLessThan(name string, fallback, lessThan int) bool",
+    "env.IntGreaterThan(name string, fallback, greaterThan int) bool",
+    "env.IntInRange(name string, fallback, min, max int) bool",
+    "env.User() *user.User",
+    "env.Magic()"
+  ]
+}
